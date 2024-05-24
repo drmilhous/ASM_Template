@@ -9,4 +9,4 @@ io.o: io.asm
 	nasm -f elf64 -d ELF_TYPE io.asm -o io.o
 
 clean:
-	rm XX *.o
+	rm -f XX *.o
