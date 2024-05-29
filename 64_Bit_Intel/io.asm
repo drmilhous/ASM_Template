@@ -1,5 +1,6 @@
 ;RDI, RSI, RDX, RCX, R8, R9 (R10) XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6 and XMM7 are used for the first floating point arguments.
 segment .data
+default rel
 printInt: db "%d",0
 printNewline: db 10,0
 printString: db "%s",0
