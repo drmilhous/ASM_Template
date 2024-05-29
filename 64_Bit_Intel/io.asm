@@ -59,7 +59,7 @@ dump_registers:
         mov rcx, rcx; same
         mov rdx, rbx
         mov rsi, rax
-        mov rdi, dumpMessage
+        lea rdi, [dumpMessage]
         call printf WRT ..plt
         add rsp, 0x58
 
@@ -88,7 +88,7 @@ print_int:
 	push rdi
 	mov rsi, rax
 	mov rax, 0x0 ; xmm
-	mov rdi, printInt
+	lea rdi, [printInt]
 	call printf WRT ..plt
 	pop rdi
 	pop rsi
@@ -98,7 +98,7 @@ print_nl:
 	push rax
 	push rsi
 	push rdi
-	mov rdi, printNewline
+	lea rdi, [printNewline]
 	call printf WRT ..plt
 	pop rdi
 	pop rsi
@@ -109,7 +109,7 @@ print_string:
 	push rsi
 	push rdi
 	mov rsi, rax
-	mov rdi, printString
+	lea rdi, [printString]
 	call printf WRT ..plt
 	pop rdi
 	pop rsi
