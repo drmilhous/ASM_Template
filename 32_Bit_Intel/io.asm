@@ -1,5 +1,7 @@
 ; ;RDI, RSI, RDX, RCX, R8, R9 (R10) XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6 and XMM7 are used for the first floating point arguments.
 segment .data
+dumpMessage db "EAX: %08X EBX: %08X ECX: %08X EDX: %08X", 10
+        dl3 db "ESI: %08X EDI: %08X ESP: %08X EBP: %08X", 10,0
 print_int_format db "%d",10,0 
 print_hex_format db "%08X",10,0
 scan_int_format db "%d", 0
@@ -24,6 +26,7 @@ segment .text
     global print_hex
     global read_int
     global print_string
+    global dump_registers
 
     global get_GOT_EAX
     extern  _GLOBAL_OFFSET_TABLE_
@@ -109,5 +112,34 @@ print_string:
         push eax
         call printf WRT ..plt
         add esp, 8
+        pop ebp
+        ret
+dump_registers:
+        ; original stack 0x4C
+        ; return 0x48
+        push ebp; 0x44
+        mov ebp, esp ; 0x40
+        pusha ; 0x20 +0x3C
+        sub esp, 4;   ;ebp; 0x1C
+        sub esp, 4;  <-esp 0x18
+        
+        push    edi; + 0x14
+        push    esi; + 0x10
+        push    edx; + 0xc
+        push    ecx; + 0x8
+        push    ebx; + 0x4
+        push    eax; <-esp
+        mov eax, ebp ; get esp from ebp
+        add eax, 0x8; add 8 for ret and ebp
+        mov [esp+0x1C], eax ; esp
+        mov eax, [ebp]
+        mov [esp+0x18], eax
+        call get_GOT_EAX
+        lea eax, [eax+dumpMessage wrt ..gotoff]
+        push eax
+        call    printf wrt ..plt
+        add     esp, 4*9
+        popa
+        mov esp, ebp
         pop ebp
         ret

@@ -1,8 +1,8 @@
-#!/bin/bash
-if [ ! -f /usr/local/bin/templateMake ]; then
-	mkdir /usr/local/bin/templateMake
-	echo "created directory"
+echo "The shell is $SHELL"
+if [[ $SHELL == "/bin/bash" ]]; then
+	echo "export PATH=\$PATH:\$HOME/ASM_Template/bin/" >> $HOME/.bashrc
+	source $HOME/.bashrc
+elif [[ $SHELL == "/bin/zsh" ]]; then
+	echo "export PATH=\$PATH:\$HOME/ASM_Template/bin/" >> $HOME/.zshrc
+	source $HOME/.zshrc
 fi
-cp -R $HOME/templateMake/* /usr/local/bin/templateMake/
-mv /usr/local/bin/templateMake/genMake.sh /usr/local/bin
-mv /usr/local/bin/templateMake/genMake64.sh /usr/local/bin
