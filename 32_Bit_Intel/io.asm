@@ -1,20 +1,14 @@
-; ;RDI, RSI, RDX, RCX, R8, R9 (R10) XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6 and XMM7 are used for the first floating point arguments.
 segment .data
 dumpMessage db "EAX: %08X EBX: %08X ECX: %08X EDX: %08X", 10
-        dl3 db "ESI: %08X EDI: %08X ESP: %08X EBP: %08X", 10,0
+        dumpMessage2: db "ESI: %08X EDI: %08X ESP: %08X EBP: %08X", 10
+        dumpMessage3: db "EFLAGS %08X  ",0
+; flags_format db "CF %c PF %c AF %c ZF %c SF %c TF %c IF %c DF %c OF %c", 10,0
+flags_format db "CF %c ZF %c", 10,0
 print_int_format db "%d",10,0 
+print_nl_format db 10,0
 print_hex_format db "%08X",10,0
 scan_int_format db "%d", 0
 print_string_format db "%s", 0
-
-
-; printInt: db "%d",0
-; printNewline: db 10,0
-; printString: db "%s",0
-; dump_regs_string: db "RAX =0x%16X", 10,0
-; global print_nl
-; global print_string
-; global dump_regs
 
 extern printf
 extern scanf
@@ -25,6 +19,7 @@ segment .text
     global print_int 
     global print_hex
     global read_int
+    global print_nl
     global print_string
     global dump_registers
 
@@ -49,6 +44,25 @@ segment .text
 
 get_GOT_EAX:
         get_GOT_A
+        ret
+
+print_nl:
+        push   ebp
+        mov    ebp, esp
+        push   eax
+        push   ebx
+
+        push eax
+        ; -no-pie 
+        get_GOT
+        lea     eax,[ebx+print_nl_format wrt ..gotoff]
+        push eax
+        call printf WRT ..plt
+        add esp, 8
+
+        pop ebx
+        pop eax
+        pop ebp
         ret
 
 print_int:
@@ -114,12 +128,13 @@ print_string:
         add esp, 8
         pop ebp
         ret
-dump_registers:
+dump_registers: ; ebx has the got address
         ; original stack 0x4C
         ; return 0x48
         push ebp; 0x44
         mov ebp, esp ; 0x40
         pusha ; 0x20 +0x3C
+        pushfd
         sub esp, 4;   ;ebp; 0x1C
         sub esp, 4;  <-esp 0x18
         
@@ -134,12 +149,51 @@ dump_registers:
         mov [esp+0x1C], eax ; esp
         mov eax, [ebp]
         mov [esp+0x18], eax
-        call get_GOT_EAX
-        lea eax, [eax+dumpMessage wrt ..gotoff]
+        lea eax, [ebx+dumpMessage wrt ..gotoff]
         push eax
         call    printf wrt ..plt
+        
         add     esp, 4*9
+        popfd
+        call dump_flags
         popa
+        mov esp, ebp
+        pop ebp
+        ret
+
+dump_flags: ; ebx points to the got table
+        push ebp
+        mov ebp, esp
+        push eax
+        push ecx
+        pushf
+        
+z_check:
+        mov ecx, [ebp - 0xC]; get the flagss
+        
+        mov eax, '0'
+        push eax
+        test ecx, 0x0040 ; zero flags
+        jz cf_check
+                add eax, 1
+                mov [esp], eax
+                jmp cf_check
+cf_check:
+        mov eax, '0'
+        push eax
+        test ecx, 0x0001 ; carry flag
+        jz print_flags
+                add eax, 1
+                mov [esp], eax
+                jmp print_flags
+print_flags:
+        lea eax, [ebx+flags_format wrt ..gotoff]
+        push eax
+        call printf wrt ..plt
+        add esp, 4 * 3
+        popf
+        pop ecx
+        pop eax
         mov esp, ebp
         pop ebp
         ret
