@@ -1,6 +1,6 @@
 all: XX
-XX: XX.o io.o
-	gcc -m32 -z noexecstack  -o $@ $+ main.c
+XX: XX.o io.o main.c
+	gcc -m32 -z noexecstack  -o $@ $+ 
 
 XX.o: XX.asm 
 	nasm -f elf32 XX.asm -o XX.o
