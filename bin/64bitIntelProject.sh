@@ -1,3 +1,4 @@
+#!/bin/bash
 if [ ! -d $HOME/projects/ ]; then
 	mkdir $HOME/projects
 fi

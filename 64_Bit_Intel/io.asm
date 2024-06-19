@@ -26,11 +26,13 @@ bottom_line resb 1000
 extern printf
 extern putchar
 extern snprintf
-extern puts        
+extern puts      
+extern scanf  
 
 segment .text 
 global print_int 
 global print_nl
+global read_int
 global print_string
 global dump_registers
 global print64Hex
@@ -368,3 +370,19 @@ use_snfprintf:
         pop rbp
         ret
 ; BINARY PRINT INT
+
+read_int:
+        push rbp
+        mov rbp, rsp
+        sub rsp, 0x10
+        lea rsi, [rsp]
+        mov QWORD [rsp+0x8], 0x6425
+        mov QWORD [rsi], 0x0
+        lea rdi, [rsp+0x8]
+        mov rax, 0
+        call scanf wrt ..plt
+        mov rax, [rsp]
+        ; and rax, 0x00000000FFFFFFF
+        mov rsp, rbp
+        pop rbp
+        ret

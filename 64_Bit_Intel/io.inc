@@ -4,3 +4,4 @@ extern print_string
 extern dump_regs
 extern print64Hex
 extern printBits
+extern read_int
