@@ -10,6 +10,15 @@ asm_main:
         ; setup routine
         push    rbp      ;prolog
         mov     rbp, rsp ;prolog
+        ;***************Function Arguments*************************
+                                ; RBP+0x10 arg 7
+                                ; R9 arg 6                      
+                                ; R8 arg 5
+                                ; RCX arg 4
+                                ; RDX arg 3
+        mov     rsi, 0          ; RSI arg 2
+        mov     rdi, 0          ; RDI arg 1 
+        ;***************Function Arguments*************************      
         ; sub     rsp, 8 ; has to be 16 byte boundary
 	;***************CODE STARTS HERE***************************
 	
@@ -23,12 +32,3 @@ asm_main:
 
 
 
-        ;***************Function Arguments***************************
-                                ; RBP+0x10 arg 7
-                                ; R9 arg 6                      
-                                ; R8 arg 5
-                                ; RCX arg 4
-                                ; RDX arg 3
-        mov     rsi, 0          ; RSI arg 2
-        mov     rdi, 0          ; RDI arg 1 
-        ;***************Function Arguments***************************
