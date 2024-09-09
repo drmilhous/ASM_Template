@@ -5,6 +5,7 @@ extern dump_regs
 extern print64Hex
 extern printBits
 extern read_int
+extern print_hex
 
 
 %macro prolouge 1

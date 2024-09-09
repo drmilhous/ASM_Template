@@ -2,6 +2,7 @@
 segment .data
 default rel
 printInt: db "%d",0
+printHex: db "%016X",0
 printNewline: db 10,0
 printString: db "%s",0
 hex_format: db "%*X", 0 
@@ -31,6 +32,7 @@ extern scanf
 
 segment .text 
 global print_int 
+global print_hex
 global print_nl
 global read_int
 global print_string
@@ -116,6 +118,20 @@ print_int:
 	pop rsi
 	pop rax
 	ret
+
+print_hex:
+	push rax
+	push rsi
+	push rdi
+	mov rsi, rax
+	mov rax, 0x0 ; xmm
+	lea rdi, [printHex]
+	call printf WRT ..plt
+	pop rdi
+	pop rsi
+	pop rax
+	ret
+
 print_nl:
 	push rax
 	push rsi
