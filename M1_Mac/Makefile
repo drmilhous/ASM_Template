@@ -9,8 +9,11 @@ XX_intel: XX_intel.o io.o
 XX_arm: XX_arm.o
 	ld -o XX_arm XX_arm.o ${FLAGS_ARM} -e _asm_main 
 
-XX_arm.o: XX_arm.s 
-	as XX_arm.s -o XX_arm.o
+io_arm.o: io_arm.s 
+	as io_arm.s -o io_arm.o
+
+XX_arm.o: XX_arm.s io_arm.o
+	as XX_arm.s io_arm.o -o XX_arm.o
 
 XX_intel.o: XX_intel.asm 
 	nasm -f macho64 XX_intel.asm -o XX_intel.o
