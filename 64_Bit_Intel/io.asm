@@ -7,6 +7,7 @@ printNewline: db 10,0
 printString: db "%s",0
 hex_format: db "%*X", 0 
 space: db " ", 0
+stack_format: db "0x%016lX: 0x%016lX",10,0
 
 
 dumpMessage db "RAX: %016lX RBX: %016lX RCX: %016lX RDX: %016lX R8 : %016lX R9 : %016lX", 10,
@@ -40,6 +41,7 @@ global dump_registers
 global print64Hex
 global printBits
 global binary_print
+global dump_stack
 dump_registers:
         ;stack before call + 0x18
         ; return address + 0x10
@@ -399,6 +401,40 @@ read_int:
         call scanf wrt ..plt
         mov rax, [rsp]
         ; and rax, 0x00000000FFFFFFF
+        mov rsp, rbp
+        pop rbp
+        ret
+
+dump_stack: ; rsi is the number of frames to dump
+        push rbp
+        mov rbp, rsp
+        sub rsp, 0x20
+        and rsp, 0xFFFFFFFFFFFFFFF0 ; align stack to 16 byte boundary
+        mov rdx, rdi        ; rdx = number of frames to print
+        mov rsi, rbp        ; rsi = current stack pointer
+        add rsi, 0x10; ; skip rbp, return address
+        mov rax, rdx
+        shl rax, 3          ; rax = rdx * 8 (size of qword)
+        add rsi, rax        ; rsi = rsi + (rdx * 8)
+        sub rsi, 8
+.dump_stack_loop:
+        cmp rdx, 0
+        jz .dump_stack_done
+        mov rax, [rsi]      ; load value at current stack position
+
+        mov [rbp - 8], rdx ; save rdx
+        mov [rbp-0x10], rsi ; save rsi
+         lea rdi, [stack_format]; rsi already set
+        mov rsi, rsi        ; address
+        mov rdx, rax; number to print
+        call printf wrt ..plt
+        mov rsi, [rbp-0x10] ; restore rsi
+        mov rdx, [rbp-8]    ; restore rdx
+        
+        sub rsi, 8          ; move to next stack slot
+        dec rdx
+        jmp .dump_stack_loop
+.dump_stack_done:
         mov rsp, rbp
         pop rbp
         ret
