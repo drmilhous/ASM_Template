@@ -1,0 +1,46 @@
+# Use the official Ubuntu base image (latest LTS)
+FROM ubuntu:latest
+
+# Set environment variables to avoid interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+ENV USERNAME=ubuntu
+
+# Update the package repository and install essential tools
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    git \
+    vim \
+    zsh \
+    python3 \
+    ca-certificates 
+    # && apt-get clean \
+    # && rm -rf /var/lib/apt/lists/*
+
+RUN apt install -y gdb nasm ripgrep neovim binutils file
+
+# Switch to the existing non-root user (ubuntu: UID 1000)
+USER ${USERNAME}
+WORKDIR /home/${USERNAME}
+
+# Install Oh My Zsh for the ubuntu user
+RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+
+# Install GEF for the ubuntu user
+RUN bash -c "$(curl -fsSL https://gef.blah.cat/sh)"
+
+RUN  mkdir /home/${USERNAME}/projects
+WORKDIR /home/${USERNAME}/projects
+WORKDIR /home/${USERNAME}
+RUN mkdir ASM_Template
+WORKDIR /home/${USERNAME}/ASM_Template
+COPY ./ /home/${USERNAME}/ASM_Template/
+RUN echo "export PATH=\$PATH:/home/${USERNAME}/ASM_Template/bin" >> ~/.zshrc
+# for gef printing issue
+RUN echo "export LC_ALL=C.UTF-8" >> ~/.zshrc 
+# WORKDIR /app
+WORKDIR /home/${USERNAME}/projects
+# Define the default command to run when the container starts
+CMD ["/bin/zsh"]
