@@ -15,12 +15,14 @@ RUN apt-get update && \
     vim \
     zsh \
     python3 \
-    ca-certificates 
+    ca-certificates \
+    software-properties-common
     # && apt-get clean \
     # && rm -rf /var/lib/apt/lists/*
 
-RUN apt install -y gdb nasm ripgrep neovim binutils file
+RUN add-apt-repository ppa:neovim-ppa/unstable -y
 
+RUN apt install -y gdb nasm ripgrep binutils file make gcc ripgrep unzip git xclip neovim sudo
 # Switch to the existing non-root user (ubuntu: UID 1000)
 USER ${USERNAME}
 WORKDIR /home/${USERNAME}
@@ -41,6 +43,10 @@ RUN echo "export PATH=\$PATH:/home/${USERNAME}/ASM_Template/bin" >> ~/.zshrc
 # for gef printing issue
 RUN echo "export LC_ALL=C.UTF-8" >> ~/.zshrc 
 # WORKDIR /app
+USER root
+#for installing in development mode
+RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+USER ${USERNAME}
 WORKDIR /home/${USERNAME}/projects
 # Define the default command to run when the container starts
 CMD ["/bin/zsh"]
