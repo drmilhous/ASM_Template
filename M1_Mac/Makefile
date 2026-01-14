@@ -1,4 +1,4 @@
-FLAGS=-target x86_64-apple-macos10.12 -Wl,-ld_classic
+FLAGS=-target x86_64-apple-macos13.0 -fPIE -Wl,-w -mmacos-version-min=13.0
 FLAGS_ARM=-lSystem -syslibroot `xcrun -sdk macosx --show-sdk-path` -arch arm64
 all: XX_intel XX_arm
 XX_intel: XX_intel.o io.o
@@ -6,14 +6,14 @@ XX_intel: XX_intel.o io.o
 
 # XX_arm: XX_arm.o io.o
 # 	gcc -o $@ $+ main_arm.c
-XX_arm: XX_arm.o
-	ld -o XX_arm XX_arm.o ${FLAGS_ARM} -e _asm_main 
+XX_arm: XX_arm.o io_arm.o
+	ld -o XX_arm XX_arm.o io_arm.o ${FLAGS_ARM} -e _asm_main 
 
 io_arm.o: io_arm.s 
 	as io_arm.s -o io_arm.o
 
-XX_arm.o: XX_arm.s io_arm.o
-	as XX_arm.s io_arm.o -o XX_arm.o
+XX_arm.o: XX_arm.s
+	as XX_arm.s -o XX_arm.o
 
 XX_intel.o: XX_intel.asm 
 	nasm -f macho64 XX_intel.asm -o XX_intel.o

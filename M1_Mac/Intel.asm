@@ -14,7 +14,7 @@ _asm_main:
         ; sub     rsp, 8 ; has to be 16 byte boundary
 	;***************CODE STARTS HERE***************************
 	
-        mov rdi, hello
+        lea rax, [rel hello]
         call _printf
         mov rax, 0 ; success
         ;***************CODE ENDS HERE*****************************
