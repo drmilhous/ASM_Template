@@ -2,7 +2,10 @@
 # so builds don't have to search again. Usage: findTools.ps1 [-Force]
 param([switch]$Force)
 $saved = "$env:USERPROFILE\.asm_template_tools.json"
-$arm = $env:PROCESSOR_ARCHITECTURE -eq "ARM64"
+# Use the real machine type: a PowerShell started from an x64-emulated parent reports AMD64
+# in PROCESSOR_ARCHITECTURE even on an ARM64 PC, which would pick the x64 tools.
+$osArch = try { [string][System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture } catch { $env:PROCESSOR_ARCHITECTURE }
+$arm = ($osArch -eq "Arm64") -or ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") -or ($env:PROCESSOR_ARCHITEW6432 -eq "ARM64")
 $arch = if ($arm) { "arm64" } else { "x64" }
 $component = if ($arm) { "Microsoft.VisualStudio.Component.VC.Tools.ARM64" } else { "Microsoft.VisualStudio.Component.VC.Tools.x86.x64" }
 $batName = if ($arm) { "vcvarsarm64.bat" } else { "vcvars64.bat" }
