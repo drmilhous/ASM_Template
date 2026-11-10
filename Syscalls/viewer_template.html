@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Syscall Explorer</title>
+<style>
+:root{--bg:#f6f7f9;--panel:#fff;--text:#1d2330;--muted:#5d6678;--line:#d9dde5;--accent:#0b6bcb;--hit:#ffe58a;--code:#f0f2f6}
+@media (prefers-color-scheme:dark){:root{--bg:#12151c;--panel:#1a1f2a;--text:#e4e8f0;--muted:#99a3b6;--line:#2b3342;--accent:#6cb0ff;--hit:#6b5a10;--code:#141821}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+header{padding:16px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:5}
+h1{margin:0 0 10px;font-size:20px}
+.controls{display:flex;flex-wrap:wrap;gap:8px}
+select,input{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 10px}
+input{flex:1;min-width:200px}
+main{padding:16px;max-width:1200px;margin:0 auto}
+h2{font-size:16px;margin:22px 0 8px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--panel)}
+td.k{font-family:ui-monospace,Consolas,monospace}
+tr:last-child td{border-bottom:0}
+.file{margin-bottom:16px}
+.file h3{margin:0;padding:8px 12px;font-size:14px;border-bottom:1px solid var(--line);display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap}
+.file h3 span{color:var(--muted);font-weight:400}
+pre{margin:0;padding:10px 0;overflow:auto;background:var(--code);font:12.5px/1.45 ui-monospace,Consolas,monospace}
+.ln{display:block;padding:0 12px;white-space:pre}
+.ln i{font-style:normal;color:var(--muted);display:inline-block;width:3.2em;user-select:none}
+mark{background:var(--hit);color:inherit;border-radius:2px}
+.hitline{background:color-mix(in srgb,var(--hit) 35%,transparent)}
+.note{color:var(--muted);font-size:13px}
+button{font:inherit;color:var(--accent);background:none;border:1px solid var(--line);border-radius:6px;padding:3px 9px;cursor:pointer}
+</style>
+</head>
+<body>
+<header>
+  <h1>Syscall Explorer</h1>
+  <div class="controls">
+    <select id="os" aria-label="Operating system"></select>
+    <select id="arch" aria-label="Platform"></select>
+    <input id="q" type="search" placeholder="Search code and tables (e.g. mmap, svc, getpid, 0x2000004)" aria-label="Search">
+  </div>
+</header>
+<main>
+  <h2>Mechanism at a glance</h2>
+  <div class="card"><table id="info"></table></div>
+  <h2>Call numbers</h2>
+  <div class="card"><table id="nums"></table></div>
+  <p class="note">Windows has no stable numbers: use the Win32/ntdll API, or read the number from the ntdll stub at run time (see the raw examples).</p>
+  <h2 id="count"></h2>
+  <div id="files"></div>
+</main>
+<script>
+const DATA = /*DATA*/null;
+const $ = id => document.getElementById(id);
+const esc = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const oses = [...new Set(DATA.platforms.map(p => p.os))];
+$('os').innerHTML = '<option value="">All operating systems</option>' + oses.map(o => `<option>${o}</option>`).join('');
+
+function fillArch() {
+  const os = $('os').value, cur = $('arch').value;
+  const archs = [...new Set(DATA.platforms.filter(p => !os || p.os === os).map(p => p.arch))];
+  $('arch').innerHTML = '<option value="">All platforms</option>' + archs.map(a => `<option>${a}</option>`).join('');
+  if (archs.includes(cur)) $('arch').value = cur;
+}
+const visiblePlatforms = () => DATA.platforms.filter(p =>
+  (!$('os').value || p.os === $('os').value) && (!$('arch').value || p.arch === $('arch').value));
+const label = p => `${p.os} ${p.arch}`;
+
+function render() {
+  const q = $('q').value.trim(), plats = visiblePlatforms();
+  const folders = new Set(plats.map(p => p.folder));
+  const re = q ? new RegExp(reEsc(q), 'gi') : null;
+  const hl = s => re ? esc(s).replace(new RegExp(reEsc(esc(q)), 'gi'), m => `<mark>${m}</mark>`) : esc(s);
+  const match = s => re && new RegExp(reEsc(q), 'i').test(s);
+
+  // info table
+  let h = '<tr><th>Platform</th><th>Instruction</th><th>Number in</th><th>Arguments</th><th>Errors</th></tr>';
+  for (const p of plats) {
+    const r = DATA.info[p.folder];
+    if (q && !match(label(p) + r.join(' '))) continue;
+    h += `<tr><td>${hl(label(p))}</td>${r.map(c => `<td class="k">${hl(c)}</td>`).join('')}</tr>`;
+  }
+  $('info').innerHTML = h;
+
+  // numbers table
+  h = '<tr><th>Call</th>' + plats.map(p => `<th>${esc(label(p))}</th>`).join('') + '</tr>';
+  for (const [name, row] of Object.entries(DATA.nums)) {
+    const cells = plats.map(p => row[p.folder] || '-');
+    if (q && !match(name + ' ' + cells.join(' '))) continue;
+    h += `<tr><td class="k"><b>${hl(name)}</b></td>${cells.map(c => `<td class="k">${hl(c)}</td>`).join('')}</tr>`;
+  }
+  $('nums').innerHTML = h;
+
+  // source files
+  let shown = 0, html = '';
+  for (const e of DATA.entries) {
+    if (!folders.has(e.folder)) continue;
+    const lines = e.code.split('\n');
+    if (lines[lines.length - 1] === '') lines.pop();
+    const hits = re ? lines.reduce((n, l) => n + (match(l) ? 1 : 0), 0) : 0;
+    if (q && !hits) continue;
+    shown++;
+    const body = lines.map((l, i) => `<span class="ln${match(l) ? ' hitline' : ''}"><i>${i + 1}</i>${hl(l)}</span>`).join('');
+    html += `<div class="card file"><h3><b>${esc(e.os + ' ' + e.arch)} <span>${esc(e.folder)}/${esc(e.file)}</span></b><span>${q ? hits + ' matching line(s)' : lines.length + ' lines'}</span></h3><pre>${body}</pre></div>`;
+  }
+  $('files').innerHTML = html || '<p class="note">No source file matches.</p>';
+  $('count').textContent = `Source code (${shown} file${shown === 1 ? '' : 's'})`;
+}
+$('os').addEventListener('change', () => { fillArch(); render(); });
+$('arch').addEventListener('change', render);
+$('q').addEventListener('input', render);
+fillArch(); render();
+</script>
+</body>
+</html>

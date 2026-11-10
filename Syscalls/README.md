@@ -38,3 +38,7 @@ Linux / macOS: `cd` into the folder and run `make && ./syscalls`.
 * `macOS_x64` also runs on Apple silicon through Rosetta.
 
 Windows: open PowerShell in the folder and run `.\quickBuild.ps1`. `Windows_x64` needs NASM plus the MSVC x64 tools (edit `$TOOL_DIR` in the script if NASM is not on PATH). `Windows_ARM64` uses the same ARM64 Build Tools as the `64_Bit_Windows_ARM` template and finds them through `bin\findTools.ps1`.
+
+## Searchable viewer
+
+Open `Syscalls/index.html` in a browser: filter by operating system and platform with the dropdowns, and search the call-number table and the source code. It is generated from the example files; after editing an example run `python3 Syscalls/build_viewer.py` to refresh it.
