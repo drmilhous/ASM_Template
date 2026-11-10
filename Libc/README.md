@@ -16,6 +16,6 @@ Same folders as `Syscalls`, but these programs call the C library (and, on Windo
 | `macOS_ARM64` | Apple `as` | `make` | `printf` variadic arguments go on the **stack**; step 4 needs `MAP_JIT` and `pthread_jit_write_protect_np` | assembled only |
 | `macOS_x64` | NASM | `make` | SysV with `_` symbol prefix | assembled only |
 | `Windows_x64` | NASM | `.\quickBuild.ps1` | `rcx rdx r8 r9` + 32 bytes shadow space | assembled only |
-| `Windows_ARM64` | armasm64 | `.\quickBuild.ps1` | `x0`-`x7`; step 4 needs `FlushInstructionCache` | not built |
+| `Windows_ARM64` | armasm64 | `.\quickBuild.ps1` | `x0`-`x7`; step 4 needs `FlushInstructionCache` | built and run on Windows ARM64 |
 
 Things to point out: ARM needs a cache flush after writing code; Apple silicon forbids writable+executable memory unless you use `MAP_JIT`; `fflush(NULL)` before `fork` stops the child repeating buffered output; on x64 and ARM the stack must stay 16-byte aligned at every call.
