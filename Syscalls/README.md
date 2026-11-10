@@ -41,4 +41,4 @@ Windows: open PowerShell in the folder and run `.\quickBuild.ps1`. `Windows_x64`
 
 ## Searchable viewer
 
-Open `Syscalls/index.html` in a browser: filter by operating system and platform with the dropdowns, and search the call-number table and the source code. It is generated from the example files; after editing an example run `python3 Syscalls/build_viewer.py` to refresh it.
+Open `Explorer/index.html` in a browser: filter by operating system, platform and kind (system calls or C library) and search the tables and source code. Regenerate it after editing an example with `python3 Explorer/build_viewer.py`.

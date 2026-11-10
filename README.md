@@ -31,7 +31,7 @@ The template files use armasm64 syntax (`AREA`, `PROC`, `DCB`), not the GNU synt
 
 ## System call examples
 
-The `Syscalls` folder has raw system call programs (write, getpid, open/read/close, mmap, exit) for every platform and CPU above. See `Syscalls/README.md`.
+The `Syscalls` folder has raw system call programs (write, getpid, open/read/close, mmap, exit) for every platform and CPU above. See `Syscalls/README.md`. The `Libc` folder has the same platforms using the C library (fopen/fwrite/fread, malloc, creating processes, executable memory). `Explorer/index.html` is a searchable web page of all of them with OS and platform dropdowns.
 
 ## Setup: choose install and project folders
 
