@@ -13,7 +13,7 @@ print_int PROC
     mov     fp, sp
     mov     w1, w0
     adrp    x0, fmtInt
-    add     x0, x0, :lo12:fmtInt
+    add     x0, x0, fmtInt
     bl      printf
     ldp     fp, lr, [sp], #16
     ret
@@ -23,7 +23,7 @@ print_nl PROC
     stp     fp, lr, [sp, #-16]!
     mov     fp, sp
     adrp    x0, fmtNl
-    add     x0, x0, :lo12:fmtNl
+    add     x0, x0, fmtNl
     bl      printf
     ldp     fp, lr, [sp], #16
     ret
@@ -34,7 +34,7 @@ print_string PROC
     mov     fp, sp
     mov     x1, x0
     adrp    x0, fmtStr
-    add     x0, x0, :lo12:fmtStr
+    add     x0, x0, fmtStr
     bl      printf
     ldp     fp, lr, [sp], #16
     ret
