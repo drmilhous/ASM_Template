@@ -13,6 +13,7 @@ asm_main PROC
     adrp    x0, hello
     add     x0, x0, hello
     bl      print_string            ; prints the string whose address is in x0
+    bl      print_nl
     mov     w0, #42
     bl      print_int               ; prints the int in w0
     bl      print_nl
