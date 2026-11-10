@@ -102,9 +102,10 @@ def step_snippets(lines):
     out = []
     for n, (i, m) in enumerate(marks):
         end = marks[n+1][0] if n + 1 < len(marks) else None
-        if end is None:  # last step ends at the failure/epilogue label
-            end = next((j for j in range(i+2, len(lines)) if re.match(r"^\.?(fail|done)\b", lines[j].strip()) or re.match(r"^\s*(xor\s+eax, eax|mov\s+w0, #0|mov\s+r0, #0)\s*$", lines[j])), len(lines))
-        while end > i + 1 and not lines[end-1].strip(): end -= 1
+        if end is None:  # last step ends at the failure/epilogue label, minus the success epilogue
+            end = next((j for j in range(i+2, len(lines)) if re.match(r"^\.?(fail|done)\b", lines[j].strip())), len(lines))
+            tail = re.compile(r"^\s*(xor\s+eax, eax|mov\s+eax, 0|jmp\s+\.done|b\s+done|mov\s+[wr]0, #0|)\s*(;.*|//.*|@.*)?$")
+            while end > i + 2 and tail.match(lines[end-1]): end -= 1
         out.append(dict(title=m.group(3), start=i+1, end=end))
     return out
 
@@ -113,6 +114,51 @@ def snippets_for(kind, folder, f, code):
     if kind == "syscall" and not f.endswith("_api.asm"):
         return syscall_snippets(lines)
     return step_snippets(lines)
+
+# ---- API documentation links (man7.org for Linux, FreeBSD man pages for macOS (BSD-derived,
+# closest public pages; also run `man 2 write` on the Mac), Microsoft Learn for Windows)
+def m7(sec, name): return f"https://man7.org/linux/man-pages/man{sec}/{name}.{sec}.html"
+def bsd(sec, name): return f"https://man.freebsd.org/cgi/man.cgi?query={name}&sektion={sec}"
+UNIX_FN = {"write":2,"read":2,"open":2,"openat":2,"close":2,"getpid":2,"mmap":2,"munmap":2,"fork":2,"waitpid":2,
+           "execv":3,"fopen":3,"fwrite":3,"fread":3,"fclose":3,"fflush":3,"malloc":3,"free":3,"puts":3,"printf":3}
+DOCS = {"Linux": {}, "macOS": {}, "Windows": {}}
+for n, sec in UNIX_FN.items():
+    DOCS["Linux"][n] = [f"{n}({sec})", m7(sec, n)]
+    if n != "openat": DOCS["macOS"][n] = [f"{n}({sec})", bsd(sec, n)]
+DOCS["macOS"]["openat"] = ["openat(2)", bsd(2, "openat")]
+DOCS["Linux"]["mmap2"] = ["mmap2(2)", m7(2, "mmap2")]
+DOCS["Linux"]["exit"] = ["_exit(2)", m7(2, "_exit")]
+DOCS["macOS"]["exit"] = ["_exit(2)", bsd(2, "_exit")]
+DOCS["macOS"]["_exit"] = DOCS["macOS"]["exit"]
+DOCS["Linux"]["_exit"] = DOCS["Linux"]["exit"]
+DOCS["Linux"]["__clear_cache"] = ["__builtin___clear_cache", "https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html"]
+for k in ("pthread_jit_write_protect_np", "sys_icache_invalidate"):
+    DOCS["macOS"][k] = [k, "https://developer.apple.com/documentation/apple-silicon/porting-just-in-time-compilers-to-apple-silicon"]
+W = "https://learn.microsoft.com/en-us/windows/win32/api/"
+DOCS["Windows"].update({
+ "GetStdHandle": ["GetStdHandle", W+"processenv/nf-processenv-getstdhandle"],
+ "WriteFile": ["WriteFile", W+"fileapi/nf-fileapi-writefile"],
+ "ReadFile": ["ReadFile", W+"fileapi/nf-fileapi-readfile"],
+ "CreateFileA": ["CreateFileA", W+"fileapi/nf-fileapi-createfilea"],
+ "CloseHandle": ["CloseHandle", W+"handleapi/nf-handleapi-closehandle"],
+ "GetCurrentProcessId": ["GetCurrentProcessId", W+"processthreadsapi/nf-processthreadsapi-getcurrentprocessid"],
+ "GetCurrentProcess": ["GetCurrentProcess", W+"processthreadsapi/nf-processthreadsapi-getcurrentprocess"],
+ "VirtualAlloc": ["VirtualAlloc", W+"memoryapi/nf-memoryapi-virtualalloc"],
+ "VirtualFree": ["VirtualFree", W+"memoryapi/nf-memoryapi-virtualfree"],
+ "ExitProcess": ["ExitProcess", W+"processthreadsapi/nf-processthreadsapi-exitprocess"],
+ "CreateProcessA": ["CreateProcessA", W+"processthreadsapi/nf-processthreadsapi-createprocessa"],
+ "WaitForSingleObject": ["WaitForSingleObject", W+"synchapi/nf-synchapi-waitforsingleobject"],
+ "GetExitCodeProcess": ["GetExitCodeProcess", W+"processthreadsapi/nf-processthreadsapi-getexitcodeprocess"],
+ "GetModuleHandleA": ["GetModuleHandleA", W+"libloaderapi/nf-libloaderapi-getmodulehandlea"],
+ "GetProcAddress": ["GetProcAddress", W+"libloaderapi/nf-libloaderapi-getprocaddress"],
+ "FlushInstructionCache": ["FlushInstructionCache", W+"processthreadsapi/nf-processthreadsapi-flushinstructioncache"],
+ "NtWriteFile": ["NtWriteFile", "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-ntwritefile"],
+ "NtTerminateProcess": ["ZwTerminateProcess (NtTerminateProcess)", "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-zwterminateprocess"],
+ "NtQueryInformationProcess": ["NtQueryInformationProcess", W+"winternl/nf-winternl-ntqueryinformationprocess"],
+})
+CRT = "https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/"
+for n, p in {"fopen":"fopen-wfopen","fwrite":"fwrite","fread":"fread","fclose":"fclose-fcloseall","fflush":"fflush","malloc":"malloc","free":"free","puts":"puts-putws","printf":"printf-printf-l-wprintf-wprintf-l"}.items():
+    DOCS["Windows"][n] = [n + " (C runtime)", CRT + p]
 
 entries = []
 for folder, os_, arch, files in PLATFORMS:
@@ -124,7 +170,7 @@ for folder, os_, arch, files in PLATFORMS:
         entries.append(dict(id=f"Libc/{folder}/{f}", kind="libc", dir="Libc", folder=folder, os=os_, arch=arch, file=f, cm=comment_style(folder, f),
                             code=(c := (root/"Libc"/folder/f).read_text(encoding="utf-8")),
                             snippets=snippets_for("libc", folder, f, c)))
-data = dict(entries=entries, info=INFO, nums=NUMS, libconv=LIBCONV, libcalls=LIBCALLS,
+data = dict(entries=entries, info=INFO, nums=NUMS, libconv=LIBCONV, docs=DOCS, libcalls=LIBCALLS,
             platforms=[dict(folder=p[0], os=p[1], arch=p[2]) for p in PLATFORMS])
 html = (here/"viewer_template.html").read_text(encoding="utf-8")
 html = html.replace("/*FONTS*/", (here/"fonts.css").read_text(encoding="utf-8"))

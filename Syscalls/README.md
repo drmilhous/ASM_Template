@@ -41,4 +41,4 @@ Windows: open PowerShell in the folder and run `.\quickBuild.ps1`. `Windows_x64`
 
 ## Searchable viewer
 
-Open `Explorer/index.html` in a browser: filter by operating system, platform and kind (system calls or C library) and search the tables and source code. Regenerate it after editing an example with `python3 Explorer/build_viewer.py`.
+Open `Explorer/index.html` in a browser (theme: auto, dark or light; each call links to its man page or Microsoft Learn page): filter by operating system, platform and kind (system calls or C library) and search the tables and source code. Regenerate it after editing an example with `python3 Explorer/build_viewer.py`.
