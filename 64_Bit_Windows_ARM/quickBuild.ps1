@@ -18,7 +18,7 @@ if ($LASTEXITCODE -ne 0) { Write-Host "armasm64 failed on $projectName.asm"; exi
 armasm64.exe -nologo io.asm -o io.obj
 if ($LASTEXITCODE -ne 0) { Write-Host "armasm64 failed on io.asm"; exit 1 }
 
-cl.exe /nologo /Zi driver.c "$projectName.obj" io.obj /Fe:"$projectName.exe"
+cl.exe /nologo /Zi driver.c "$projectName.obj" io.obj /Fe:"$projectName.exe" /link legacy_stdio_definitions.lib
 if ($LASTEXITCODE -ne 0) { Write-Host "cl.exe failed"; exit 1 }
 
 & ".\$projectName.exe"
