@@ -127,6 +127,7 @@ for folder, os_, arch, files in PLATFORMS:
 data = dict(entries=entries, info=INFO, nums=NUMS, libconv=LIBCONV, libcalls=LIBCALLS,
             platforms=[dict(folder=p[0], os=p[1], arch=p[2]) for p in PLATFORMS])
 html = (here/"viewer_template.html").read_text(encoding="utf-8")
+html = html.replace("/*FONTS*/", (here/"fonts.css").read_text(encoding="utf-8"))
 out = html.replace("/*DATA*/null", json.dumps(data).replace("</", "<\\/"))
 (here/"index.html").write_text(out, encoding="utf-8")
 print("snippets:", sum(len(e["snippets"]) for e in entries))
