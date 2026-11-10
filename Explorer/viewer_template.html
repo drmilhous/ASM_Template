@@ -32,6 +32,16 @@ mark{background:var(--hit);color:inherit;border-radius:2px}
 .hitline{background:color-mix(in srgb,var(--hit) 35%,transparent)}
 .note{color:var(--muted);font-size:13px}
 button{font:inherit;color:var(--accent);background:none;border:1px solid var(--line);border-radius:6px;padding:3px 9px;cursor:pointer}
+
+.tk-c{color:#6a7a8c;font-style:italic}.tk-s{color:#b5541a}.tk-n{color:#8a3fc4}.tk-r{color:#0b7a6b}.tk-m{color:#0b57c4;font-weight:600}.tk-d{color:#a0306e}.tk-l{color:#b07d00;font-weight:600}.tk-k{color:#c4421a}
+@media (prefers-color-scheme:dark){.tk-c{color:#7f8da0}.tk-s{color:#f0a070}.tk-n{color:#c9a0ff}.tk-r{color:#5fd6c2}.tk-m{color:#7db4ff}.tk-d{color:#ff8ec4}.tk-l{color:#e8c060}.tk-k{color:#ff9070}}
+.snip{margin-bottom:12px}
+.snip h3{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.snip h3 b{font-family:ui-monospace,Consolas,monospace}
+details.file>summary{cursor:pointer;padding:8px 12px;font-weight:600;list-style:none}
+details.file>summary::before{content:'\25b8 ';color:var(--muted)}details.file[open]>summary::before{content:'\25be '}
+details.file[open]>summary{border-bottom:1px solid var(--line)}
+.flash{outline:2px solid var(--accent)}
 </style>
 </head>
 <body>
@@ -52,6 +62,8 @@ button{font:inherit;color:var(--accent);background:none;border:1px solid var(--l
   <p class="note">Windows has no stable numbers: use the Win32/ntdll API, or read the number from the ntdll stub at run time (see the raw examples).</p></div>
   <div id="libsec"><h2>C library / process / memory calls</h2>
   <div class="card"><table id="libs"></table></div></div>
+  <h2 id="scount"></h2>
+  <div id="snips"></div>
   <h2 id="count"></h2>
   <div id="files"></div>
 </main>
@@ -63,6 +75,40 @@ const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const oses = [...new Set(DATA.platforms.map(p => p.os))];
 $('os').innerHTML = '<option value="">All operating systems</option>' + oses.map(o => `<option>${o}</option>`).join('');
 
+const DIRECT = new Set("equ db dd dq dw resb resd resq segment section global extern default align times ascii asciz word long quad skip space set macro endm arch arch_extension text data bss globl p2align area export import dcb dcd dcq proc endp end".split(' '));
+const REG = /^(?:[re]?[abcd]x|[abcd][lh]|[re]?[sd]il?|[re]?[sb]pl?|r(?:\d|1[0-5])[dwb]?|rip|xmm\d+|[xw](?:\d|[12]\d|30|zr)|sp|lr|fp|pc|r(?:\d|1[0-5])|wzr|xzr)$/i;
+function hlLine(line, cm) {
+  let code = line, comment = '', inStr = false, q = '';
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inStr) { if (c === q) inStr = false; continue; }
+    if (c === '"' || c === "'") { inStr = true; q = c; continue; }
+    if (line.startsWith(cm, i)) { code = line.slice(0, i); comment = line.slice(i); break; }
+  }
+  let first = true, out = '';
+  const re = /("(?:[^"\\]|\\.)*"|'[^']*')|(#?-?\b0x[0-9a-fA-F]+\b|#?-?\b\d+\b)|([.$A-Za-z_@][\w.$@]*:?)|(\s+)|(.)/g;
+  let m;
+  while ((m = re.exec(code))) {
+    if (m[1]) { out += `<span class="tk-s">${esc(m[1])}</span>`; first = false; }
+    else if (m[2]) { out += `<span class="tk-n">${esc(m[2])}</span>`; first = false; }
+    else if (m[3]) {
+      const w = m[3], bare = w.replace(/:$/, ''), lw = bare.replace(/^\./, '').toLowerCase();
+      let cls = '';
+      if (w.endsWith(':') && first) cls = 'tk-l';
+      else if (REG.test(bare)) cls = 'tk-r';
+      else if (/^SYS_|^[A-Z][A-Z0-9_]{3,}$/.test(bare) && !DIRECT.has(lw)) cls = 'tk-k';
+      else if (DIRECT.has(lw)) cls = 'tk-d';
+      else if (first) cls = 'tk-m';
+      out += cls ? `<span class="${cls}">${esc(w)}</span>` : esc(w);
+      if (!(w.endsWith(':') && first)) first = false;
+    }
+    else out += esc(m[0]);
+  }
+  if (comment) out += `<span class="tk-c">${esc(comment)}</span>`;
+  return out;
+}
+let focusId = null;
+function jumpTo(id, start) { focusId = id; $('q').value = ''; render(); const el = document.getElementById('f-' + id); if (el) { el.open = true; el.scrollIntoView({block: 'start'}); const ln = document.getElementById(`l-${id}-${start}`); if (ln) { ln.classList.add('flash'); ln.scrollIntoView({block: 'center'}); } } }
 function fillArch() {
   const os = $('os').value, cur = $('arch').value;
   const archs = [...new Set(DATA.platforms.filter(p => !os || p.os === os).map(p => p.arch))];
@@ -110,7 +156,23 @@ function render() {
   $('numsec').style.display = kind === 'libc' ? 'none' : '';
   $('libsec').style.display = kind === 'syscall' ? 'none' : '';
 
-  // source files
+  // snippets: each system call (or step) on its own
+  let sh = '', sn = 0;
+  for (const e of DATA.entries) {
+    if (!folders.has(e.folder) || (kind && e.kind !== kind)) continue;
+    const lines = e.code.split('\n');
+    for (const s of e.snippets) {
+      const body = lines.slice(s.start - 1, s.end);
+      if (q && !match(s.title + ' ' + body.join('\n') + ' ' + e.os + ' ' + e.arch)) continue;
+      sn++;
+      const rows = body.map((l, i) => `<span class="ln"><i>${s.start + i}</i>${hlLine(l, e.cm)}</span>`).join('');
+      sh += `<div class="card file snip"><h3><span><b>${hl(s.title)}</b> <span>${esc(e.os + ' ' + e.arch)} - ${e.kind === 'libc' ? 'C library' : 'system call'}</span></span><span>lines ${s.start}-${s.end} <button data-id="${esc(e.id)}" data-start="${s.start}">in full program</button></span></h3><pre>${rows}</pre></div>`;
+    }
+  }
+  $('snips').innerHTML = sh || '<p class="note">No snippet matches.</p>';
+  $('scount').textContent = `Each call on its own (${sn})`;
+
+  // full programs (collapsed)
   let shown = 0, html = '';
   for (const e of DATA.entries) {
     if (!folders.has(e.folder) || (kind && e.kind !== kind)) continue;
@@ -119,12 +181,13 @@ function render() {
     const hits = re ? lines.reduce((n, l) => n + (match(l) ? 1 : 0), 0) : 0;
     if (q && !hits) continue;
     shown++;
-    const body = lines.map((l, i) => `<span class="ln${match(l) ? ' hitline' : ''}"><i>${i + 1}</i>${hl(l)}</span>`).join('');
-    html += `<div class="card file"><h3><b>${esc(e.os + ' ' + e.arch)} <span>${esc(e.dir)}/${esc(e.folder)}/${esc(e.file)}</span></b><span>${q ? hits + ' matching line(s)' : lines.length + ' lines'}</span></h3><pre>${body}</pre></div>`;
+    const body = lines.map((l, i) => `<span class="ln${match(l) ? ' hitline' : ''}" id="l-${esc(e.id)}-${i + 1}"><i>${i + 1}</i>${hlLine(l, e.cm)}</span>`).join('');
+    html += `<details class="card file" id="f-${esc(e.id)}"${focusId === e.id ? ' open' : ''}><summary>${esc(e.os + ' ' + e.arch)} - ${e.kind === 'libc' ? 'C library' : 'system calls'} <span class="note">${esc(e.dir)}/${esc(e.folder)}/${esc(e.file)} - ${q ? hits + ' matching line(s)' : lines.length + ' lines'}</span></summary><pre>${body}</pre></details>`;
   }
   $('files').innerHTML = html || '<p class="note">No source file matches.</p>';
-  $('count').textContent = `Source code (${shown} file${shown === 1 ? '' : 's'})`;
+  $('count').textContent = `Full programs (${shown} file${shown === 1 ? '' : 's'})`;
 }
+$('snips').addEventListener('click', ev => { const b = ev.target.closest('button[data-id]'); if (b) jumpTo(b.dataset.id, b.dataset.start); });
 $('os').addEventListener('change', () => { fillArch(); render(); });
 $('arch').addEventListener('change', render);
 $('kind').addEventListener('change', render);

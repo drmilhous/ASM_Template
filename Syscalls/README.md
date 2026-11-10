@@ -19,7 +19,7 @@ The Windows folders do the same steps through the Win32 API, plus a second progr
 | `macOS_ARM64` | Apple `as` | `svc #0x80` | `x16` | `x0`-`x5` | carry flag set, `x0` = errno | assembled only |
 | `macOS_x64` | NASM `macho64` | `syscall` | `rax` = `0x2000000` + n | `rdi rsi rdx r10 r8 r9` | carry flag set, `rax` = errno | assembled only |
 | `Windows_x64` | NASM `win64` | `syscall` | `eax` (SSN) | `rcx rdx r8 r9`, stack; copy `rcx` to `r10` | NTSTATUS in `eax` | assembled and linked only |
-| `Windows_ARM64` | armasm64 | `svc #N` (N is part of the instruction) | immediate | `x0`-`x7`, stack | NTSTATUS in `x0` | built and run on Windows 11 ARM64 (api + raw) |
+| `Windows_ARM64` | armasm64 | `svc #N` (N is part of the instruction) | immediate | `x0`-`x7`, stack | NTSTATUS in `x0` | built and run on Windows ARM64 (api + raw) |
 
 ## Things worth pointing out in class
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Regenerates index.html (the searchable syscall / C-library explorer) from the example sources.
 Usage: python3 Explorer/build_viewer.py      (run from anywhere; writes next to this script)"""
-import json, pathlib
+import json, pathlib, re
 here = pathlib.Path(__file__).parent
 root = here.parent
 
@@ -60,17 +60,74 @@ LIBCALLS = {
  "create a process":  {p: ("CreateProcessA + WaitForSingleObject + GetExitCodeProcess" if p.startswith("Windows") else "fork + execv + waitpid") for p in LIBCONV},
  "executable memory": {p: ("VirtualAlloc(PAGE_EXECUTE_READWRITE)" + (" + FlushInstructionCache" if p=="Windows_ARM64" else "") if p.startswith("Windows") else ("mmap(MAP_JIT) + pthread_jit_write_protect_np + sys_icache_invalidate" if p=="macOS_ARM64" else "mmap(PROT_EXEC)" + (" + __clear_cache" if "ARM" in p and p.startswith("Linux") else ""))) for p in LIBCONV},
 }
+def comment_style(folder, f):
+    if f.endswith(".asm"): return ";"
+    return "@" if folder == "Linux_ARM32" else "//"
+
+INVOKE = re.compile(r"^\s*(syscall|int\s+0x80|svc\s+#0x80|svc\s+#0)\b")
+STOP_WORDS = {"call","bl","blr","b","jmp","ret","test","cmp","cmn","js","jz","jnz","jc","je","jne","ja","tbnz","cbz","cbnz","bcs","bhi","blt","beq","bne","bx","blx","b.cs","b.hi","b.eq","b.ne","b.lt","b.hs"}
+CHECKS = {"test","cmp","cmn","js","jz","jnz","jc","je","ja","tbnz","cbz","cbnz","bcs","bhi","blt","b.cs","b.hi","b.lt","b.eq","b.ne"}
+STEP = re.compile(r"^\s+(;|//|@)\s*(\d)\.\s+(.*?)\s*$")
+
+def first_word(line):
+    t = line.strip().split(None, 1)
+    return t[0].lower() if t else ""
+
+def is_plain(line):
+    st = line.strip()
+    if not st or st.startswith((";", "//", "@")): return False
+    if re.match(r"^[.\w$]+:", st): return False
+    w = first_word(line)
+    return w not in STOP_WORDS and not w.startswith(".") and w not in ("segment","section","global")
+
+def syscall_snippets(lines):
+    out, seen = [], set()
+    for i, l in enumerate(lines):
+        if not INVOKE.match(l): continue
+        a = i
+        while a > 0 and is_plain(lines[a-1]): a -= 1
+        b = i
+        while b + 1 < len(lines) and first_word(lines[b+1]) in CHECKS and b - i < 2: b += 1
+        text = "\n".join(lines[a:b+1])
+        m = re.findall(r"SYS_(\w+)", text)
+        title = m[0] if m else "syscall stub"
+        if title in seen: continue
+        seen.add(title)
+        out.append(dict(title=title, start=a+1, end=b+1))
+    return out
+
+def step_snippets(lines):
+    marks = [(i, STEP.match(l)) for i, l in enumerate(lines)]
+    marks = [(i, m) for i, m in marks if m]
+    out = []
+    for n, (i, m) in enumerate(marks):
+        end = marks[n+1][0] if n + 1 < len(marks) else None
+        if end is None:  # last step ends at the failure/epilogue label
+            end = next((j for j in range(i+2, len(lines)) if re.match(r"^\.?(fail|done)\b", lines[j].strip()) or re.match(r"^\s*(xor\s+eax, eax|mov\s+w0, #0|mov\s+r0, #0)\s*$", lines[j])), len(lines))
+        while end > i + 1 and not lines[end-1].strip(): end -= 1
+        out.append(dict(title=m.group(3), start=i+1, end=end))
+    return out
+
+def snippets_for(kind, folder, f, code):
+    lines = code.split("\n")
+    if kind == "syscall" and not f.endswith("_api.asm"):
+        return syscall_snippets(lines)
+    return step_snippets(lines)
+
 entries = []
 for folder, os_, arch, files in PLATFORMS:
     for f in files:
-        entries.append(dict(id=f"{folder}/{f}", kind="syscall", dir="Syscalls", folder=folder, os=os_, arch=arch, file=f,
-                            code=(root/"Syscalls"/folder/f).read_text(encoding="utf-8")))
+        entries.append(dict(id=f"{folder}/{f}", kind="syscall", dir="Syscalls", folder=folder, os=os_, arch=arch, file=f, cm=comment_style(folder, f),
+                            code=(c := (root/"Syscalls"/folder/f).read_text(encoding="utf-8")),
+                            snippets=snippets_for("syscall", folder, f, c)))
     for f in LIBFILES[folder]:
-        entries.append(dict(id=f"Libc/{folder}/{f}", kind="libc", dir="Libc", folder=folder, os=os_, arch=arch, file=f,
-                            code=(root/"Libc"/folder/f).read_text(encoding="utf-8")))
+        entries.append(dict(id=f"Libc/{folder}/{f}", kind="libc", dir="Libc", folder=folder, os=os_, arch=arch, file=f, cm=comment_style(folder, f),
+                            code=(c := (root/"Libc"/folder/f).read_text(encoding="utf-8")),
+                            snippets=snippets_for("libc", folder, f, c)))
 data = dict(entries=entries, info=INFO, nums=NUMS, libconv=LIBCONV, libcalls=LIBCALLS,
             platforms=[dict(folder=p[0], os=p[1], arch=p[2]) for p in PLATFORMS])
 html = (here/"viewer_template.html").read_text(encoding="utf-8")
 out = html.replace("/*DATA*/null", json.dumps(data).replace("</", "<\\/"))
 (here/"index.html").write_text(out, encoding="utf-8")
+print("snippets:", sum(len(e["snippets"]) for e in entries))
 print("wrote", here/"index.html", len(out)//1024, "KB")
