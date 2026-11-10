@@ -1,0 +1,5 @@
+*.o
+*.obj
+*.exe
+Linux_*/syscalls
+macOS_*/syscalls
