@@ -1,1 +1,4 @@
-projects/*
+projects/*Libc/Linux_*/libc_calls
+Libc/macOS_*/libc_calls
+Syscalls/Linux_*/syscalls
+Syscalls/macOS_*/syscalls

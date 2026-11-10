@@ -29,6 +29,10 @@ NASM is for Intel/AMD, so it is not used here. The `64_Bit_Windows_ARM` template
 
 The template files use armasm64 syntax (`AREA`, `PROC`, `DCB`), not the GNU syntax of the Linux ARM64 template. If you prefer Linux tools, WSL2 with `64bitArmProject.sh` also runs natively on these machines.
 
+## System call examples
+
+The `Syscalls` folder has raw system call programs (write, getpid, open/read/close, mmap, exit) for every platform and CPU above. See `Syscalls/README.md`. The `Libc` folder has the same platforms using the C library (fopen/fwrite/fread, malloc, creating processes, executable memory). `Explorer/index.html` is a searchable web page of all of them with OS and platform dropdowns.
+
 ## Setup: choose install and project folders
 
 Run from the `ASM_Template` folder (or its parent). The current folder becomes the install location; the optional argument is where projects are created (default `~/projects`, or `%USERPROFILE%\Projects` on Windows).

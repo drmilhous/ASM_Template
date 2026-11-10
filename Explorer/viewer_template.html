@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Call Explorer</title>
+<style>
+/*FONTS*/
+/* Theme taken from the asm-editor ("Pandora ASM Ops"): dark holographic ops console */
+:root{
+  --bg:#02070d;--bg-deep:#010409;--glass:rgba(6,26,40,.52);--glass-strong:rgba(4,20,32,.78);
+  --cyan:#4ff3ff;--cyan-soft:#8af7ff;--teal:#1de9b6;--amber:#ffb547;--red:#ff5470;--violet:#b78cff;
+  --text:#c6f8ff;--text-dim:#6fb6c4;--text-faint:#2f6d7a;
+  --line:rgba(79,243,255,.42);--line-soft:rgba(79,243,255,.2);--line-faint:rgba(79,243,255,.1);
+  --glow:0 0 6px rgba(79,243,255,.55),0 0 18px rgba(79,243,255,.18);--glow-text:0 0 6px rgba(79,243,255,.7);
+  --font-ui:'Rajdhani','Segoe UI',system-ui,sans-serif;--font-mono:'Share Tech Mono',ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
+  --syn-comment:#3f8796;--syn-mnemonic:#4ff3ff;--syn-label:#ffb547;--syn-directive:#b78cff;--syn-register:#1de9b6;
+  --syn-number:#ffd98a;--syn-string:#9effc8;--syn-keyword:#7fc7ff;--syn-symbol:#e2fbff;--syn-punct:#5fa9b8;
+  color-scheme:dark;
+  --page-bg:radial-gradient(1200px 700px at 18% -10%,rgba(29,233,182,.11),transparent 60%),radial-gradient(1000px 800px at 105% 110%,rgba(79,140,255,.12),transparent 60%),linear-gradient(180deg,#03101a 0%,#010409 100%);
+  --scan:rgba(255,255,255,.018);--gridc:rgba(79,243,255,.04);--field-bg:rgba(3,14,24,.7);
+  --card-bg:linear-gradient(160deg,rgba(10,40,58,.5),rgba(6,26,40,.52) 40%,rgba(3,14,24,.62));--card-shadow:inset 0 0 40px rgba(79,243,255,.04),0 10px 40px rgba(0,0,0,.35);
+  --pre-bg:rgba(1,6,12,.55);--mark-bg:rgba(255,181,71,.35);--hit-bg:rgba(255,181,71,.1);--btn-bg:rgba(79,243,255,.06);--btn-hover:rgba(79,243,255,.16);--flash-bg:rgba(79,243,255,.12);--sel:rgba(79,243,255,.3);}
+:root[data-theme="light"]{
+  --bg:#f3f7fa;--bg-deep:#e8eff4;--glass:rgba(255,255,255,.7);--glass-strong:rgba(255,255,255,.92);
+  --cyan:#0a7f95;--cyan-soft:#07667a;--teal:#0f8f76;--amber:#a86400;--red:#c62f4a;--violet:#7a3fd1;
+  --text:#12303a;--text-dim:#4a6b77;--text-faint:#8aa4ae;
+  --line:rgba(10,127,149,.5);--line-soft:rgba(10,127,149,.3);--line-faint:rgba(10,127,149,.16);
+  --glow:0 0 0 rgba(0,0,0,0);--glow-text:0 0 0 rgba(0,0,0,0);
+  --syn-comment:#6b8794;--syn-mnemonic:#0a6fa8;--syn-label:#a86400;--syn-directive:#7a3fd1;--syn-register:#0f8f76;
+  --syn-number:#a05a00;--syn-string:#1b7a3a;--syn-keyword:#1666b0;--syn-symbol:#12303a;--syn-punct:#4a6b77;
+  --page-bg:radial-gradient(1200px 700px at 18% -10%,rgba(29,233,182,.12),transparent 60%),radial-gradient(1000px 800px at 105% 110%,rgba(79,140,255,.12),transparent 60%),linear-gradient(180deg,#f7fafc 0%,#e8eff4 100%);
+  --scan:rgba(0,0,0,0);--gridc:rgba(10,127,149,.06);--field-bg:#fff;
+  --card-bg:linear-gradient(160deg,#ffffff,rgba(255,255,255,.85));--card-shadow:0 6px 24px rgba(20,60,80,.1);
+  --pre-bg:#f3f8fb;--mark-bg:rgba(255,196,60,.55);--hit-bg:rgba(255,196,60,.2);--btn-bg:rgba(10,127,149,.07);--btn-hover:rgba(10,127,149,.16);--flash-bg:rgba(10,127,149,.14);--sel:rgba(10,127,149,.25);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]):not([data-theme="light"]){
+  --bg:#f3f7fa;--bg-deep:#e8eff4;--glass:rgba(255,255,255,.7);--glass-strong:rgba(255,255,255,.92);
+  --cyan:#0a7f95;--cyan-soft:#07667a;--teal:#0f8f76;--amber:#a86400;--red:#c62f4a;--violet:#7a3fd1;
+  --text:#12303a;--text-dim:#4a6b77;--text-faint:#8aa4ae;
+  --line:rgba(10,127,149,.5);--line-soft:rgba(10,127,149,.3);--line-faint:rgba(10,127,149,.16);
+  --glow:0 0 0 rgba(0,0,0,0);--glow-text:0 0 0 rgba(0,0,0,0);
+  --syn-comment:#6b8794;--syn-mnemonic:#0a6fa8;--syn-label:#a86400;--syn-directive:#7a3fd1;--syn-register:#0f8f76;
+  --syn-number:#a05a00;--syn-string:#1b7a3a;--syn-keyword:#1666b0;--syn-symbol:#12303a;--syn-punct:#4a6b77;
+  --page-bg:radial-gradient(1200px 700px at 18% -10%,rgba(29,233,182,.12),transparent 60%),radial-gradient(1000px 800px at 105% 110%,rgba(79,140,255,.12),transparent 60%),linear-gradient(180deg,#f7fafc 0%,#e8eff4 100%);
+  --scan:rgba(0,0,0,0);--gridc:rgba(10,127,149,.06);--field-bg:#fff;
+  --card-bg:linear-gradient(160deg,#ffffff,rgba(255,255,255,.85));--card-shadow:0 6px 24px rgba(20,60,80,.1);
+  --pre-bg:#f3f8fb;--mark-bg:rgba(255,196,60,.55);--hit-bg:rgba(255,196,60,.2);--btn-bg:rgba(10,127,149,.07);--btn-hover:rgba(10,127,149,.16);--flash-bg:rgba(10,127,149,.14);--sel:rgba(10,127,149,.25);
+  color-scheme:light;
+}}
+.tk-m{font-weight:600}
+*{box-sizing:border-box}
+body{margin:0;color:var(--text);font:500 15px/1.5 var(--font-ui);-webkit-font-smoothing:antialiased;min-height:100vh;
+  background:var(--page-bg) fixed,var(--bg)}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:repeating-linear-gradient(0deg,var(--scan) 0 1px,transparent 1px 3px),
+  linear-gradient(var(--gridc) 1px,transparent 1px) 0 0/48px 48px,linear-gradient(90deg,var(--gridc) 1px,transparent 1px) 0 0/48px 48px}
+header,main{position:relative;z-index:1}
+header{padding:14px 16px;border-bottom:1px solid var(--line-soft);background:var(--glass-strong);backdrop-filter:blur(8px);position:sticky;top:0;z-index:5}
+h1{margin:0 0 10px;font-size:17px;font-weight:600;letter-spacing:.34em;text-transform:uppercase;color:var(--cyan-soft);text-shadow:var(--glow-text)}
+h1::before,h2::before{content:'';display:inline-block;width:6px;height:6px;margin-right:10px;vertical-align:2px;background:var(--cyan);box-shadow:var(--glow);transform:rotate(45deg)}
+.controls{display:flex;flex-wrap:wrap;gap:8px}
+select,input{font:inherit;font-family:var(--font-mono);font-size:13px;color:var(--text);background:var(--field-bg);border:1px solid var(--line-soft);padding:7px 10px;border-radius:0;outline:none}
+select:focus,input:focus{border-color:var(--cyan);box-shadow:var(--glow)}
+input{flex:1;min-width:200px}
+input::placeholder{color:var(--text-faint)}
+main{padding:16px;max-width:1200px;margin:0 auto}
+h2{font-size:12.5px;font-weight:600;letter-spacing:.34em;text-transform:uppercase;color:var(--cyan-soft);text-shadow:var(--glow-text);margin:26px 0 10px}
+.card{position:relative;background:var(--card-bg);border:1px solid var(--line-faint);box-shadow:var(--card-shadow);overflow:auto}
+.card::before,.card::after{content:'';position:absolute;width:12px;height:12px;border:0 solid var(--cyan);pointer-events:none;opacity:.8}
+.card::before{left:-1px;top:-1px;border-top-width:2px;border-left-width:2px}
+.card::after{right:-1px;bottom:-1px;border-right-width:2px;border-bottom-width:2px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 10px;border-bottom:1px solid var(--line-faint);text-align:left;white-space:nowrap}
+th{color:var(--text-dim);font-weight:600;letter-spacing:.12em;text-transform:uppercase;font-size:11.5px;position:sticky;top:0;background:var(--glass-strong)}
+td{color:var(--text)}
+td.k{font-family:var(--font-mono);font-size:12.5px}
+tr:last-child td{border-bottom:0}
+.file{margin-bottom:14px}
+.file h3{margin:0;padding:8px 12px;font-size:13px;font-weight:600;letter-spacing:.04em;border-bottom:1px solid var(--line-faint);display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;color:var(--cyan-soft)}
+.file h3 span{color:var(--text-dim);font-weight:500}
+.snip h3 b{font-family:var(--font-mono);color:var(--amber);font-weight:400}
+pre{margin:0;padding:10px 0;overflow:auto;background:var(--pre-bg);font:13px/1.5 var(--font-mono)}
+.ln{display:block;padding:0 12px;white-space:pre}
+.ln i{font-style:normal;color:var(--text-faint);display:inline-block;width:3.2em;user-select:none}
+mark{background:var(--mark-bg);color:inherit;border-radius:0}
+.hitline{background:var(--hit-bg)}
+.note{color:var(--text-dim);font-size:13px}
+button{font:inherit;font-size:12px;letter-spacing:.06em;color:var(--cyan);background:var(--btn-bg);border:1px solid var(--line-soft);padding:2px 10px;cursor:pointer;border-radius:0}
+button:hover{background:var(--btn-hover);box-shadow:var(--glow)}
+.tk-c{color:var(--syn-comment);font-style:italic}.tk-s{color:var(--syn-string)}.tk-n{color:var(--syn-number)}.tk-r{color:var(--syn-register)}
+.tk-m{color:var(--syn-mnemonic);font-weight:600}.tk-d{color:var(--syn-directive)}.tk-l{color:var(--syn-label)}.tk-k{color:var(--syn-keyword)}
+.snip{margin-bottom:12px}
+.docs{padding:6px 12px;font-size:12.5px;border-bottom:1px solid var(--line-faint);color:var(--text-dim)}
+a{color:var(--cyan);text-decoration:none;border-bottom:1px dotted var(--line-soft)}a:hover{border-bottom-style:solid;text-shadow:var(--glow-text)}
+.docs a{margin-right:10px;font-family:var(--font-mono)}
+.snip h3{align-items:center}
+details.file>summary{cursor:pointer;padding:9px 12px;font-weight:600;letter-spacing:.04em;list-style:none;color:var(--cyan-soft)}
+details.file>summary::before{content:'\25b8 ';color:var(--cyan)}details.file[open]>summary::before{content:'\25be '}
+details.file[open]>summary{border-bottom:1px solid var(--line-faint)}
+.flash{outline:1px solid var(--cyan);box-shadow:var(--glow);background:var(--flash-bg)}
+::selection{background:var(--sel)}
+</style>
+</head>
+<body>
+<header>
+  <h1>System Call &amp; C Library Explorer</h1>
+  <div class="controls">
+    <select id="os" aria-label="Operating system"></select>
+    <select id="arch" aria-label="Platform"></select>
+    <select id="theme" aria-label="Theme"><option value="auto">Theme: auto</option><option value="dark">Theme: dark</option><option value="light">Theme: light</option></select>
+    <select id="kind" aria-label="Kind of call"><option value="">System calls + C library</option><option value="syscall">System calls only</option><option value="libc">C library only</option></select>
+    <input id="q" type="search" placeholder="Search code and tables (e.g. mmap, svc, getpid, 0x2000004)" aria-label="Search">
+  </div>
+</header>
+<main>
+  <h2>Mechanism at a glance</h2>
+  <div class="card"><table id="info"></table></div>
+  <div id="numsec"><h2>System call numbers</h2>
+  <div class="card"><table id="nums"></table></div>
+  <p class="note">Windows has no stable numbers: use the Win32/ntdll API, or read the number from the ntdll stub at run time (see the raw examples).</p></div>
+  <div id="libsec"><h2>C library / process / memory calls</h2>
+  <div class="card"><table id="libs"></table></div></div>
+  <div id="docsec"><h2>API documentation</h2>
+  <div class="card"><table id="docs"></table></div></div>
+  <h2 id="scount"></h2>
+  <div id="snips"></div>
+  <h2 id="count"></h2>
+  <div id="files"></div>
+</main>
+<script>
+const DATA = /*DATA*/null;
+const $ = id => document.getElementById(id);
+const esc = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const oses = [...new Set(DATA.platforms.map(p => p.os))];
+$('os').innerHTML = '<option value="">All operating systems</option>' + oses.map(o => `<option>${o}</option>`).join('');
+
+const DIRECT = new Set("equ db dd dq dw resb resd resq segment section global extern default align times ascii asciz word long quad skip space set macro endm arch arch_extension text data bss globl p2align area export import dcb dcd dcq proc endp end".split(' '));
+const REG = /^(?:[re]?[abcd]x|[abcd][lh]|[re]?[sd]il?|[re]?[sb]pl?|r(?:\d|1[0-5])[dwb]?|rip|xmm\d+|[xw](?:\d|[12]\d|30|zr)|sp|lr|fp|pc|r(?:\d|1[0-5])|wzr|xzr)$/i;
+function hlLine(line, cm) {
+  let code = line, comment = '', inStr = false, q = '';
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inStr) { if (c === q) inStr = false; continue; }
+    if (c === '"' || c === "'") { inStr = true; q = c; continue; }
+    if (line.startsWith(cm, i)) { code = line.slice(0, i); comment = line.slice(i); break; }
+  }
+  let first = true, out = '';
+  const re = /("(?:[^"\\]|\\.)*"|'[^']*')|(#?-?\b0x[0-9a-fA-F]+\b|#?-?\b\d+\b)|([.$A-Za-z_@][\w.$@]*:?)|(\s+)|(.)/g;
+  let m;
+  while ((m = re.exec(code))) {
+    if (m[1]) { out += `<span class="tk-s">${esc(m[1])}</span>`; first = false; }
+    else if (m[2]) { out += `<span class="tk-n">${esc(m[2])}</span>`; first = false; }
+    else if (m[3]) {
+      const w = m[3], bare = w.replace(/:$/, ''), lw = bare.replace(/^\./, '').toLowerCase();
+      let cls = '';
+      if (w.endsWith(':') && first) cls = 'tk-l';
+      else if (REG.test(bare)) cls = 'tk-r';
+      else if (/^SYS_|^[A-Z][A-Z0-9_]{3,}$/.test(bare) && !DIRECT.has(lw)) cls = 'tk-k';
+      else if (DIRECT.has(lw)) cls = 'tk-d';
+      else if (first) cls = 'tk-m';
+      out += cls ? `<span class="${cls}">${esc(w)}</span>` : esc(w);
+      if (!(w.endsWith(':') && first)) first = false;
+    }
+    else out += esc(m[0]);
+  }
+  if (comment) out += `<span class="tk-c">${esc(comment)}</span>`;
+  return out;
+}
+const OSKEY = {Linux: 'Linux', macOS: 'macOS', Windows: 'Windows'};
+function docKeys(code, os, cm) {
+  const table = DATA.docs[os] || {}, seen = [];
+  code = code.split('\n').map(l => { const i = l.indexOf(cm); return i < 0 ? l : l.slice(0, i); }).join('\n');
+  for (const m of code.matchAll(/[A-Za-z_][A-Za-z0-9_]*/g)) {
+    let w = m[0];
+    if (/^SYS_/.test(w)) w = w.slice(4);
+    for (const c of [w, w.replace(/^_/, '')]) if (table[c] && !seen.includes(c)) { seen.push(c); break; }
+  }
+  return seen;
+}
+const docChips = (keys, os) => keys.map(k => `<a href="${esc(DATA.docs[os][k][1])}" target="_blank" rel="noopener">${esc(DATA.docs[os][k][0])}</a>`).join(' ');
+function applyTheme(v) {
+  if (v === 'dark' || v === 'light') document.documentElement.setAttribute('data-theme', v); else document.documentElement.removeAttribute('data-theme');
+}
+let focusId = null;
+function jumpTo(id, start) { focusId = id; $('q').value = ''; render(); const el = document.getElementById('f-' + id); if (el) { el.open = true; el.scrollIntoView({block: 'start'}); const ln = document.getElementById(`l-${id}-${start}`); if (ln) { ln.classList.add('flash'); ln.scrollIntoView({block: 'center'}); } } }
+function fillArch() {
+  const os = $('os').value, cur = $('arch').value;
+  const archs = [...new Set(DATA.platforms.filter(p => !os || p.os === os).map(p => p.arch))];
+  $('arch').innerHTML = '<option value="">All platforms</option>' + archs.map(a => `<option>${a}</option>`).join('');
+  if (archs.includes(cur)) $('arch').value = cur;
+}
+const visiblePlatforms = () => DATA.platforms.filter(p =>
+  (!$('os').value || p.os === $('os').value) && (!$('arch').value || p.arch === $('arch').value));
+const label = p => `${p.os} ${p.arch}`;
+
+function render() {
+  const q = $('q').value.trim(), plats = visiblePlatforms();
+  const folders = new Set(plats.map(p => p.folder));
+  const re = q ? new RegExp(reEsc(q), 'gi') : null;
+  const hl = s => re ? esc(s).replace(new RegExp(reEsc(esc(q)), 'gi'), m => `<mark>${m}</mark>`) : esc(s);
+  const match = s => re && new RegExp(reEsc(q), 'i').test(s);
+
+  // info table
+  let h = '<tr><th>Platform</th><th>Instruction</th><th>Number in</th><th>Arguments</th><th>Errors</th><th>C library convention</th></tr>';
+  for (const p of plats) {
+    const r = DATA.info[p.folder];
+    if (q && !match(label(p) + r.join(' ') + DATA.libconv[p.folder])) continue;
+    h += `<tr><td>${hl(label(p))}</td>${r.concat([DATA.libconv[p.folder]]).map(c => `<td class="k">${hl(c)}</td>`).join('')}</tr>`;
+  }
+  $('info').innerHTML = h;
+
+  // numbers table
+  h = '<tr><th>Call</th>' + plats.map(p => `<th>${esc(label(p))}</th>`).join('') + '</tr>';
+  for (const [name, row] of Object.entries(DATA.nums)) {
+    const cells = plats.map(p => row[p.folder] || '-');
+    if (q && !match(name + ' ' + cells.join(' '))) continue;
+    h += `<tr><td class="k"><b>${hl(name)}</b></td>${cells.map(c => `<td class="k">${hl(c)}</td>`).join('')}</tr>`;
+  }
+  $('nums').innerHTML = h;
+
+  // library table
+  h = '<tr><th>Task</th>' + plats.map(p => `<th>${esc(label(p))}</th>`).join('') + '</tr>';
+  for (const [name, row] of Object.entries(DATA.libcalls)) {
+    const cells = plats.map(p => row[p.folder] || '-');
+    if (q && !match(name + ' ' + cells.join(' '))) continue;
+    h += `<tr><td class="k"><b>${hl(name)}</b></td>${cells.map(c => `<td class="k">${hl(c)}</td>`).join('')}</tr>`;
+  }
+  $('libs').innerHTML = h;
+  const kind = $('kind').value;
+  $('numsec').style.display = kind === 'libc' ? 'none' : '';
+  $('libsec').style.display = kind === 'syscall' ? 'none' : '';
+
+  // API documentation table
+  const osList = [...new Set(plats.map(p => p.os))];
+  const names = [...new Set(osList.flatMap(o => Object.keys(DATA.docs[o])))].sort();
+  h = '<tr><th>Function</th>' + osList.map(o => `<th>${o}</th>`).join('') + '</tr>';
+  for (const n of names) {
+    const cells = osList.map(o => DATA.docs[o][n]);
+    if (q && !match(n + ' ' + cells.map(c => c ? c[0] : '').join(' '))) continue;
+    h += `<tr><td class="k"><b>${hl(n)}</b></td>` + cells.map(c => c ? `<td class="k"><a href="${esc(c[1])}" target="_blank" rel="noopener">${esc(c[0])}</a></td>` : '<td class="k">-</td>').join('') + '</tr>';
+  }
+  $('docs').innerHTML = h;
+
+  // snippets: each system call (or step) on its own
+  let sh = '', sn = 0;
+  for (const e of DATA.entries) {
+    if (!folders.has(e.folder) || (kind && e.kind !== kind)) continue;
+    const lines = e.code.split('\n');
+    for (const s of e.snippets) {
+      const body = lines.slice(s.start - 1, s.end);
+      if (q && !match(s.title + ' ' + body.join('\n') + ' ' + e.os + ' ' + e.arch)) continue;
+      sn++;
+      const rows = body.map((l, i) => `<span class="ln"><i>${s.start + i}</i>${hlLine(l, e.cm)}</span>`).join('');
+      const dk = docKeys(body.join('\n'), e.os, e.cm);
+      const docs = dk.length ? `<div class="docs">Docs: ${docChips(dk, e.os)}</div>` : '';
+      sh += `<div class="card file snip"><h3><span><b>${hl(s.title)}</b> <span>${esc(e.os + ' ' + e.arch)} - ${e.kind === 'libc' ? 'C library' : 'system call'}</span></span><span>lines ${s.start}-${s.end} <button data-id="${esc(e.id)}" data-start="${s.start}">in full program</button></span></h3>${docs}<pre>${rows}</pre></div>`;
+    }
+  }
+  $('snips').innerHTML = sh || '<p class="note">No snippet matches.</p>';
+  $('scount').textContent = `Each call on its own (${sn})`;
+
+  // full programs (collapsed)
+  let shown = 0, html = '';
+  for (const e of DATA.entries) {
+    if (!folders.has(e.folder) || (kind && e.kind !== kind)) continue;
+    const lines = e.code.split('\n');
+    if (lines[lines.length - 1] === '') lines.pop();
+    const hits = re ? lines.reduce((n, l) => n + (match(l) ? 1 : 0), 0) : 0;
+    if (q && !hits) continue;
+    shown++;
+    const body = lines.map((l, i) => `<span class="ln${match(l) ? ' hitline' : ''}" id="l-${esc(e.id)}-${i + 1}"><i>${i + 1}</i>${hlLine(l, e.cm)}</span>`).join('');
+    html += `<details class="card file" id="f-${esc(e.id)}"${focusId === e.id ? ' open' : ''}><summary>${esc(e.os + ' ' + e.arch)} - ${e.kind === 'libc' ? 'C library' : 'system calls'} <span class="note">${esc(e.dir)}/${esc(e.folder)}/${esc(e.file)} - ${q ? hits + ' matching line(s)' : lines.length + ' lines'}</span></summary><pre>${body}</pre></details>`;
+  }
+  $('files').innerHTML = html || '<p class="note">No source file matches.</p>';
+  $('count').textContent = `Full programs (${shown} file${shown === 1 ? '' : 's'})`;
+}
+$('snips').addEventListener('click', ev => { const b = ev.target.closest('button[data-id]'); if (b) jumpTo(b.dataset.id, b.dataset.start); });
+$('os').addEventListener('change', () => { fillArch(); render(); });
+$('arch').addEventListener('change', render);
+$('kind').addEventListener('change', render);
+{ let saved = 'auto'; try { saved = localStorage.getItem('explorer-theme') || 'auto'; } catch (e) {}
+  $('theme').value = saved; applyTheme(saved);
+  $('theme').addEventListener('change', () => { applyTheme($('theme').value); try { localStorage.setItem('explorer-theme', $('theme').value); } catch (e) {} }); }
+$('q').addEventListener('input', render);
+fillArch(); render();
+</script>
+</body>
+</html>
