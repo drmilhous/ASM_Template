@@ -16,6 +16,9 @@ if (($userPath -split ';') -notcontains $bin) {
     Write-Host "Added $bin to your PATH."
 }
 
+# Locate and save the VS tools (builds reuse this)
+& "$PSScriptRoot\findTools.ps1" -Force | Out-Null
+
 # Check the tools
 $arm = $env:PROCESSOR_ARCHITECTURE -eq "ARM64"
 Write-Host ""
