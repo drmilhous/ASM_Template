@@ -168,7 +168,7 @@ msg     DCB     "1. WriteFile: Hello from the Win32 API on ARM64", 13, 10, 0
 pidmsg  DCB     "2. GetCurrentProcessId: ", 0
 filemsg DCB     "3. CreateFileA/ReadFile/CloseHandle hosts file (first 40 bytes):", 13, 10, 0
 mapmsg  DCB     "4. VirtualAlloc: wrote this text into a fresh page", 13, 10, 0
-path    DCB     "C:\Windows\System32\drivers\etc\hosts", 0
+path    DCB     "C:\\Windows\\System32\\drivers\\etc\\hosts", 0
 crlf    DCB     13, 10, 0
 
     AREA    |.data|, DATA, READWRITE, ALIGN=3
