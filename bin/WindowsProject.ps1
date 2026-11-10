@@ -11,8 +11,11 @@ Get-Content "$env:temp\vcvars.txt" | Foreach-Object {
 $CL_LOC = (Get-Command cl.exe).Path.Replace("cl.exe","") 
 Write-Host "Building $projectName"
 # Set the path to the project directory
-$baseDir = "$env:USERPROFILE\ASM_Template\64_Bit_Windows"
-$projects = $env:USERPROFILE + "\Projects"
+# Locations: ASM_TEMPLATE_HOME (install folder) and ASM_PROJECTS (project folder).
+# Set by setup.ps1 or the environment; defaults below.
+$asmHome = if ($env:ASM_TEMPLATE_HOME) { $env:ASM_TEMPLATE_HOME } else { Split-Path -Parent $PSScriptRoot }
+$projects = if ($env:ASM_PROJECTS) { $env:ASM_PROJECTS } else { "$env:USERPROFILE\Projects" }
+$baseDir = "$asmHome\64_Bit_Windows"
 $projectName = $args[0]
 $projectDir = "$projects\$projectName"
 

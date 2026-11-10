@@ -1,13 +1,15 @@
-if [ ! -d $HOME/projects/ ]; then
-	mkdir $HOME/projects
+#!/bin/bash
+source "$(dirname "${BASH_SOURCE[0]}")/asm_env.sh"
+if [ ! -d "$ASM_PROJECTS" ]; then
+	mkdir -p "$ASM_PROJECTS"
 fi
-TEMPLATE=$HOME/ASM_Template/32_Bit_Intel
+TEMPLATE=$ASM_TEMPLATE_HOME/32_Bit_Intel
 # if [ ! -d $TEMPLATE ] ; then
 # 	TEMPLATE=/usr/local/bin/templateMake
 # fi
-DIR=$HOME/projects/$1
+DIR=$ASM_PROJECTS/$1
 if [ ! -d "$DIR" ]; then
-	mkdir $DIR
+	mkdir "$DIR"
 	cp $TEMPLATE/32bit.asm $DIR/$1.asm
 	cp $TEMPLATE/driver.c $DIR/main.c
 	cp $TEMPLATE/io.inc $DIR/
