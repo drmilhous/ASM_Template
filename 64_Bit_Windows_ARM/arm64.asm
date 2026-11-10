@@ -1,7 +1,6 @@
 ; Windows ARM64 template (armasm64 syntax).  Build with: .\quickBuild.ps1
     AREA    |.text|, CODE, READONLY, ALIGN=4
     EXPORT  asm_main
-    IMPORT  printf
     IMPORT  print_int
     IMPORT  print_nl
     IMPORT  print_string
