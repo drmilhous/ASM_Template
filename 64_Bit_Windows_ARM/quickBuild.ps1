@@ -7,7 +7,7 @@ Remove-Item .\*.exe, .\*.obj -ErrorAction SilentlyContinue
 $tools = & "$PSScriptRoot\findTools.ps1"
 if (-not $tools) { exit 1 }
 
-cmd.exe /c "`"$($tools.vcvars)`" >nul && armasm64.exe -nologo $projectName.asm -o $projectName.obj && cl.exe /nologo /Zi driver.c io.c $projectName.obj /Fe:$projectName.exe /link legacy_stdio_definitions.lib"
+cmd.exe /c "`"$($tools.vcvars)`" >nul && armasm64.exe -nologo $projectName.asm -o $projectName.obj && armasm64.exe -nologo io.asm -o io.obj && cl.exe /nologo /Zi driver.c $projectName.obj io.obj /Fe:$projectName.exe /link legacy_stdio_definitions.lib"
 if ($LASTEXITCODE -ne 0) { Write-Host "Build failed"; exit 1 }
 
 & ".\$projectName.exe"
