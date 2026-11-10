@@ -35,8 +35,8 @@ main PROC
     stp     x21, x22, [sp, #32]
 
     ; 1. stdio
-    adrp    x0, h1
-    add     x0, x0, h1
+    adrp    x0, s_h1
+    add     x0, x0, s_h1
     bl      puts
     adrp    x0, path
     add     x0, x0, path
@@ -72,8 +72,8 @@ main PROC
     strb    wzr, [x1, x20]              ; zero terminator
     mov     x0, x19
     bl      fclose
-    adrp    x0, f1
-    add     x0, x0, f1
+    adrp    x0, s_f1
+    add     x0, x0, s_f1
     mov     x1, x20
     adrp    x2, buf
     add     x2, x2, buf
@@ -86,8 +86,8 @@ main PROC
     mov     x19, x0
     mov     x1, #12345
     str     x1, [x19]
-    adrp    x0, f2
-    add     x0, x0, f2
+    adrp    x0, s_f2
+    add     x0, x0, s_f2
     mov     x1, x19
     ldr     x2, [x19]
     bl      printf
@@ -95,8 +95,8 @@ main PROC
     bl      free
 
     ; 3. CreateProcessA
-    adrp    x0, h3
-    add     x0, x0, h3
+    adrp    x0, s_h3
+    add     x0, x0, s_h3
     bl      puts
     mov     x0, #0
     bl      fflush                      ; fflush(NULL): keep our output before the child's
@@ -128,8 +128,8 @@ main PROC
     adrp    x1, exitcode
     add     x1, x1, exitcode
     bl      GetExitCodeProcess
-    adrp    x0, f3
-    add     x0, x0, f3
+    adrp    x0, s_f3
+    add     x0, x0, s_f3
     ldr     w1, [x20, #16]              ; dwProcessId
     adrp    x2, exitcode
     add     x2, x2, exitcode
@@ -163,8 +163,8 @@ cp_loop
     bl      FlushInstructionCache       ; (process handle, address, size)
     blr     x19                         ; run the generated code
     mov     w2, w0
-    adrp    x0, f4
-    add     x0, x0, f4
+    adrp    x0, s_f4
+    add     x0, x0, s_f4
     mov     x1, x19
     bl      printf
     mov     x0, x19
@@ -187,12 +187,12 @@ done
 path    DCB     "libc_demo_win_arm.txt", 0
 wmode   DCB     "wb", 0                 ; "b" = binary: no CR LF translation
 rmode   DCB     "rb", 0
-h1      DCB     "1. stdio: fopen/fwrite/fclose then fopen/fread/fclose", 0
-f1      DCB     "   read back %zu bytes: %s", 0
-f2      DCB     "2. malloc(64) returned %p, stored value %lld, now free()", 10, 0
-h3      DCB     "3. CreateProcessA(cmd.exe /c echo ...) + WaitForSingleObject", 0
-f3      DCB     "   child process %lu finished with exit code %lu", 10, 0
-f4      DCB     "4. executable page at %p: called generated code, it returned %d", 10, 0
+s_h1      DCB     "1. stdio: fopen/fwrite/fclose then fopen/fread/fclose", 0
+s_f1      DCB     "   read back %zu bytes: %s", 0
+s_f2      DCB     "2. malloc(64) returned %p, stored value %lld, now free()", 10, 0
+s_h3      DCB     "3. CreateProcessA(cmd.exe /c echo ...) + WaitForSingleObject", 0
+s_f3      DCB     "   child process %lu finished with exit code %lu", 10, 0
+s_f4      DCB     "4. executable page at %p: called generated code, it returned %d", 10, 0
 text    DCB     "written with fwrite", 10       ; 20 bytes
         ALIGN   4
 ; machine code (ARM64):  mov w0, #42 ; ret
