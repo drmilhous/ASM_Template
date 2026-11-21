@@ -1,30 +1,51 @@
 # GNU as (AT&T syntax) AVX examples for Linux, macOS (Intel) and Windows x64 (MSYS2/MinGW).
+# They are ASM_Template programs: asm_main + the template's io.asm library + its driver.c.
+# The library is NASM code, so nasm is needed for io.o only; the examples themselves use GNU as.
 #   make                     build all six         make 02_vector_add_avx    build one
 #   ./02_vector_add_avx      run it                make clean
 # The sources are .S files: gcc/clang run the C preprocessor (platform.h), then GNU as.
 # Run 05_cpuid_detect first: examples 02-06 need a CPU with the matching extension.
 PROGS = 01_vector_add_sse 02_vector_add_avx 03_dot_product_fma 04_avx2_integer_sum 05_cpuid_detect 06_avx512_mask
 
+# The template folder (override with: make T=/path/to/ASM_Template, or set ASM_TEMPLATE_HOME)
+T ?= $(if $(ASM_TEMPLATE_HOME),$(ASM_TEMPLATE_HOME),$(abspath ../../..))
+
 UNAME := $(shell uname -s)
 ifeq ($(UNAME),Linux)
+  FMT = elf64
   EXE =
-  ASFLAGS_DBG = -g
+  LIB = $(T)/64_Bit_Intel
+  DRIVER = driver.c
+  IOFLAGS = -d ELF_TYPE
+  LDFLAGS = -z noexecstack
 else ifeq ($(UNAME),Darwin)
+  FMT = macho64
   EXE =
-  ASFLAGS_DBG = -g
+  LIB = $(T)/M1_Mac
+  DRIVER = driver_intel.c
+  IOFLAGS =
+  LDFLAGS =
 else
-  EXE = .exe             # MSYS2 / MinGW / Git Bash on Windows
-  ASFLAGS_DBG = -g
+  FMT = win64            # MSYS2 / MinGW / Git Bash on Windows
+  EXE = .exe
+  LIB = $(T)/64_Bit_Windows
+  DRIVER = driver.c
+  IOFLAGS =
+  LDFLAGS =
 endif
 CC ?= gcc
-# For a cross build from Linux: make EXE=.exe CC=x86_64-w64-mingw32-gcc
+# For a cross build from Linux:
+#   make FMT=win64 EXE=.exe LIB=$(T)/64_Bit_Windows CC=x86_64-w64-mingw32-gcc IOFLAGS= LDFLAGS=
 
 .PHONY: all clean
 all: $(PROGS:%=%$(EXE))
 
-%$(EXE): %.S platform.h
-	$(CC) $(ASFLAGS_DBG) -c $< -o $*.o
-	$(CC) $*.o -o $@
+io.o: $(LIB)/io.asm
+	nasm -f $(FMT) $(IOFLAGS) $< -o $@
+
+%$(EXE): %.S platform.h io.o
+	$(CC) -g -c $< -o $*.o
+	$(CC) $(LDFLAGS) -o $@ $*.o io.o $(LIB)/$(DRIVER)
 
 clean:
 	rm -f $(PROGS) $(PROGS:%=%.exe) *.o
