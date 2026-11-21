@@ -1,84 +1,85 @@
-# AVX examples (NASM and GNU as; Linux, macOS, Windows)
+# SIMD examples: x86-64 AVX (NASM) and ARM64 NEON (GNU as)
 
-Six small programs about vector instructions, each written twice so you can compare the two assemblers:
+Vector instructions on the two CPU families the template covers, as small programs that print their result and the value they should print.
 
-| # | Program | Needs |
+| Folder | CPU | Assembler | Platforms |
+|---|---|---|---|
+| `nasm/` | x86-64: SSE, AVX, FMA, AVX2, AVX-512 | NASM (Intel syntax) | Linux, macOS (Intel), Windows x64 |
+| `gas/` | ARM64: NEON, SVE | GNU as syntax (AArch64) | Linux ARM64, macOS (Apple Silicon), Windows on Arm |
+
+The two folders show the same ideas, program for program:
+
+| # | x86-64 (`nasm/`) | ARM64 (`gas/`) |
 |---|---|---|
-| 01 | `vector_add_sse` - add two float arrays, 4 at a time (xmm) | SSE |
-| 02 | `vector_add_avx` - same, 8 at a time, three-operand VEX form (ymm) | AVX |
-| 03 | `dot_product_fma` - `vfmadd231ps` and a horizontal sum | AVX + FMA3 |
-| 04 | `avx2_integer_sum` - `vpaddd` on 8 integer lanes plus a scalar tail | AVX2 |
-| 05 | `cpuid_detect` - CPUID and XGETBV: what the CPU **and the OS** support | any x86-64 |
-| 06 | `avx512_mask` - zmm registers and opmask registers for the loop tail | AVX-512F |
+| 01 | `vector_add_sse` - 4 floats per xmm register | `vector_add_neon` - 4 floats per v register (`fadd v2.4s, v0.4s, v1.4s`) |
+| 02 | `vector_add_avx` - 8 floats per ymm, three-operand VEX form | `vector_add_pairs` - 8 floats per pass with two registers and `ldp`/`stp` pairs |
+| 03 | `dot_product_fma` - `vfmadd231ps`, horizontal sum | `dot_product_fmla` - `fmla`, horizontal sum with `faddp` |
+| 04 | `avx2_integer_sum` - `vpaddd` on 8 lanes plus a scalar tail | `integer_sum` - `add` on 4 lanes, `addv`, scalar tail |
+| 05 | `cpuid_detect` - CPUID and XGETBV (CPU **and** OS support) | `feature_detect` - `getauxval` / `sysctlbyname` / `IsProcessorFeaturePresent` |
+| 06 | `avx512_mask` - zmm registers and opmask registers for the loop tail | `masked_tail` - NEON has no masks: `cmgt` builds one and `bsl` merges |
+| 07 | | `sve_predicate` - SVE `whilelt` predicates: the real equivalent of AVX-512 masks (needs an SVE CPU) |
 
-Run `05_cpuid_detect` first; if it says "no" for an extension, the matching example will crash with an illegal instruction.
-Every program prints its result and the value it should be, so you can see it worked.
-
-## Two assemblers, same programs
-
-| | `nasm/` | `gas/` |
-|---|---|---|
-| Assembler | NASM | GNU as (called through gcc/clang as `.S` files) |
-| Syntax | Intel: `vaddps ymm1, ymm0, [r9 + rcx]` (destination first) | AT&T: `vaddps (%r10,%rcx), %ymm0, %ymm1` (destination last) |
-| Registers / constants | `rax`, `42` | `%rax`, `$42` |
-| Memory | `[base + index*4]` | `(base,index,4)` |
-| AVX-512 mask | `zmm0{k1}{z}` | `%zmm0{%k1}{z}` (mask on the destination) |
-| Portability layer | `platform.inc` (NASM macros) | `platform.h` (C preprocessor) |
-
-The programs are laid out the same way in both folders, so reading one next to the other shows what changes (syntax) and what does not (the instructions).
+Run `05` first on either side. If a feature is missing, the matching example would stop with an illegal instruction (the x86 examples) or says so (07).
 
 ## They are ASM_Template programs
 
-Each example is the usual template program: it defines `asm_main`, and the template's `driver.c` `main()` calls it. Output goes through the template's I/O library (`io.asm`/`io.inc`): `print_int`, `print_string` and `print_nl`. There is no `printf` in the examples. The library is picked from the template folder for your OS (`64_Bit_Intel`, `M1_Mac` or `64_Bit_Windows`) and built to `io.o`; the `gas/` examples link against that NASM-built object like any other, which is also a small demonstration of mixing the two assemblers.
+Each example is the usual template program: it defines `asm_main`, and the template's `driver.c` `main()` calls it. Output goes through the template's I/O library for the platform, so there is no `printf` in the examples. The library is built to `io.o` from the template folder; both Makefiles find the template two folders up (`Examples/AVX/nasm` -> `ASM_Template`). Set `ASM_TEMPLATE_HOME`, or pass `T=/path/to/ASM_Template` to `make`, if you moved them.
 
-Floats are printed with the library's `print_float`: it takes a **double in `xmm0`** and prints it like `printf("%f")`, so the examples widen a single-precision result with `cvtss2sd` first. `print_float` keeps all registers and `xmm0`; the other print routines may clobber `xmm0` (printf runs inside them), so a float result that must survive a `print_string` is parked in a stack slot. Library calls also clobber the caller-saved registers, so loop counters that live across a print are kept in `rbx`/`r12`/`r13`.
+| | Library | Print an integer | Print a string | Print a double | Newline |
+|---|---|---|---|---|---|
+| x86-64 Linux | `64_Bit_Intel/io.asm` | `rax` | `rax` = address | `xmm0` | `print_nl` |
+| x86-64 macOS | `M1_Mac/io.asm` | `rdi` | `rdi` = address | `xmm0` | `print_nl` |
+| x86-64 Windows | `64_Bit_Windows/io.asm` | `rax` | `rax` = address | `xmm0` | `print_nl` |
+| ARM64 Linux | `64_Bit_ARM/io.s` | `w0` | `x0` = address | `d0` | `print_nl` |
+| ARM64 macOS | `M1_Mac/io_arm.s` | `w0` | `x0` = address | `d0` | `print_nl` |
+| ARM64 Windows | `64_Bit_Windows_ARM/io_c_fallback.c` (C) or `io.asm` (armasm64) | `w0` | `x0` = address | `d0` | `print_nl` |
 
-The folders find the template by looking three levels up (`Examples/AVX/nasm` -> `ASM_Template`); set `ASM_TEMPLATE_HOME` or pass `T=/path/to/ASM_Template` to `make` if you moved them.
+Floats are printed with `print_float`, which takes a **double** (like `printf("%f")`), so the examples widen a single-precision result first (`cvtss2sd` on x86, `fcvt d0, s0` on ARM64). Library calls clobber the caller-saved registers because printf runs inside them, so anything that must survive a print lives in a callee-saved register (`rbx`, `r12`... / `x19`...`x28`) or a stack slot. `platform.inc` (NASM macros) and `platform.h` (C preprocessor, used by the `.S` files) hide the per-platform differences behind `PRINT_INT`, `PRINT_STR`, `PRINT_FLOAT`, `PRINT_NL`.
 
 ## Build
 
-Linux and macOS (Intel), from `nasm/` or `gas/`:
+Linux and macOS, from `nasm/` or `gas/` (the `gas/` folder is for ARM machines):
 
-    make                    # all six
-    make 02_vector_add_avx  # one
-    ./02_vector_add_avx
+    make                    # all of them
+    make 03_dot_product_fma # one (use the name of the program in that folder)
+    ./03_dot_product_fma
 
-Needs `nasm` (to build the template library, and for the `nasm/` examples), `make` and `gcc` (Linux) or the Xcode command line tools (macOS).
+Needs `make` and `gcc` (Linux) or the Xcode command line tools (macOS). The `nasm/` folder also needs `nasm`.
 
-Windows x64:
+Windows:
 
 | | Command | Needs |
 |---|---|---|
-| NASM | `.\quickBuild.ps1 [name]` in `nasm\` | NASM and Visual Studio C++ x64 tools (same as the other Windows templates) |
-| GNU as | `.\quickBuild.ps1 [name]` in `gas\` | NASM (for the library) and MinGW-w64 gcc, e.g. from MSYS2: `pacman -S mingw-w64-x86_64-gcc make` |
+| x86-64 (`nasm\`) | `.\quickBuild.ps1 [name]` | NASM and Visual Studio C++ x64 tools (same as the other Windows templates) |
+| ARM64 (`gas\`) | `.\quickBuild.ps1 [name]` | ARM64 `clang` that can link Windows programs: MSYS2 CLANGARM64 (`pacman -S mingw-w64-clang-aarch64-clang`), or LLVM for Windows on Arm with the Visual Studio ARM64 C++ tools |
 
-Both folders' Makefiles also work in an MSYS2 MinGW64 shell.
+Both folders' Makefiles also work in an MSYS2 shell (`MINGW64` for x86-64, `CLANGARM64` for ARM64).
 
-## What the portability layer hides
+## Syntax in one table
 
-The vector code is identical on every OS. Only the way a value or string reaches the library differs:
+| | NASM (x86-64) | GNU syntax (ARM64) |
+|---|---|---|
+| Operand order | destination first: `vaddps ymm1, ymm0, [r9 + rcx]` | destination first: `fadd v2.4s, v0.4s, v1.4s` |
+| Registers / constants | `rax`, `42` | `x0`/`w0`, `#42` |
+| Memory | `[base + index*4]` | `[base, index, lsl #2]` |
+| Vector lane shapes | `ymm0` = 8 floats (register name sets the width) | `v0.4s` = 4 floats (the suffix sets the shape: `.4s`, `.2d`, `.16b`...) |
+| Comments | `;` | `//` (the `.S` files go through the C preprocessor) |
 
-| | Linux | macOS | Windows x64 |
-|---|---|---|---|
-| Library | `64_Bit_Intel/io.asm` | `M1_Mac/io.asm` | `64_Bit_Windows/io.asm` |
-| Value / string pointer passed in | `rax` | `rdi` | `rax` |
-| Entry point symbol | `asm_main` | `_asm_main` | `asm_main` |
-| Object format | `elf64` | `macho64` | `win64` |
+(On ARM, GNU as and the built-in clang assembler accept the same syntax. Windows' own `armasm64` uses a different one and is not used here.)
 
-The macros are `PRINT_INT`, `PRINT_STR`, `PRINT_PTR`, `PRINT_NL` (see `platform.inc` / `platform.h`).
-Two more portable details: array base addresses are loaded with `lea` first (RIP-relative addressing cannot also take an index register, and macOS and Windows require it), and data sections carry `align=64` so the aligned loads (`vmovaps`) are safe.
+## What the portability layers hide
 
-**Library changes in this folder's PR:** `print_float` (double in `xmm0`) was added to all three libraries (`64_Bit_Intel`, `M1_Mac`, `64_Bit_Windows`).
-The old `64_Bit_Windows/io.asm` was a copy of the Linux one (it passed arguments in `rdi`/`rsi` and called `printf wrt ..plt`, which does not assemble for `win64`). It is replaced by a real Windows x64 version with `print_int`/`print_hex`/`print_nl`/`print_string`/`print_float` (value or pointer in `rax`, double in `xmm0`), a working `dump_registers`, and all registers preserved. It handles the Microsoft x64 rules itself: 32 bytes of shadow space, 16-byte stack alignment, a double passed to `printf` in both an xmm and an integer register, and `%llX` for 64-bit hex (`%lX` is only 32 bits on Windows).
+x86-64: the first `printf` arguments are in `rdi, rsi, rdx` (Linux, macOS) or `rcx, rdx, r8` (Windows); macOS puts an underscore in front of C names (`_asm_main`); Windows wants 32 bytes of shadow space and a double passed to a variadic function in both an xmm and an integer register. Array base addresses are loaded with `lea` first (RIP-relative addressing cannot also take an index register), and data sections carry `align=64` so the aligned loads are safe. The **Windows x64 library** (`64_Bit_Windows/io.asm`) used to be a copy of the Linux one and did not assemble for `win64`; it is now a real Windows version with a working `dump_registers`.
+
+ARM64: addresses are formed with `adrp` + `add`, written `sym` / `:lo12:sym` on Linux and Windows but `sym@PAGE` / `sym@PAGEOFF` on macOS (the `ADDR` macro). macOS also puts an underscore in front of C names, and Apple's ARM64 passes the arguments of a variadic function such as `printf` on the stack, which `print_float` in `io_arm.s` handles. Windows on Arm passes a variadic double in an integer register (handled in `io.asm`).
 
 ## Which machines can run these
 
-- **Intel or AMD PC with AVX** (almost anything since 2013; AVX2/FMA since about 2015; AVX-512 only on some CPUs): all three OSes.
-- **Windows on Arm and Apple Silicon Macs**: these programs build for x86-64 (on a Mac the Makefiles pass `-target x86_64-apple-macos13.0` so `make` produces an Intel binary), and they run only as far as the emulator supports the instructions. Windows-on-Arm emulation has no AVX. Rosetta 2 on macOS may run SSE and some AVX/AVX2, but not AVX-512: run `05_cpuid_detect` first. Use an x64 PC, a cloud Linux VM, or the ARM64 NEON examples.
-- On macOS the build targets Intel Macs.
+- **x86-64**: an Intel or AMD PC with AVX (almost anything since 2013; AVX2/FMA since about 2015; AVX-512 only on some CPUs): all three OSes. On an Apple Silicon Mac the Makefile builds an Intel binary (`-target x86_64-apple-macos13.0`) that runs through Rosetta 2, which may run SSE and some AVX/AVX2 but not AVX-512. Windows on Arm emulation has no AVX. Run `05_cpuid_detect` first.
+- **ARM64**: NEON is on every ARM64 CPU, so 01-06 run on Apple Silicon Macs, Windows on Arm PCs and any ARM64 Linux (Raspberry Pi 4/5, Graviton, ...). 07 needs SVE (AWS Graviton 3/4, Neoverse V1/V2, A64FX...). On an x86 Linux machine you can run the ARM64 programs with `apt install qemu-user gcc-aarch64-linux-gnu`, then `make CC=aarch64-linux-gnu-gcc` and `qemu-aarch64 -cpu max -L /usr/aarch64-linux-gnu ./03_dot_product_fmla`.
 
 ## Testing status
 
-Linux x86-64 (NASM and GNU as): built and run, all twelve programs, outputs match each other.
-Windows x64: assembled and linked (NASM `win64` plus MinGW for both versions, including the new `io.asm`); **not run** (no Windows machine available), and the Visual Studio `quickBuild.ps1` is untested.
-macOS: assembled only (NASM `macho64`, clang for the `.S` files); **not linked or run**.
+- x86-64 Linux: all six NASM programs built and run on an AVX-512 CPU.
+- ARM64 Linux: all seven programs built with `aarch64-linux-gnu-gcc` and run under `qemu-aarch64 -cpu max` (SVE included); 05/07 also run under `-cpu cortex-a57` and correctly report no DotProd/SVE.
+- x86-64 Windows: assembled and linked (NASM `win64` + MinGW), **not run**. ARM64 Windows and ARM64/x86-64 macOS: assembled with `clang -target` only, **not linked or run**. The `quickBuild.ps1` scripts are untested.

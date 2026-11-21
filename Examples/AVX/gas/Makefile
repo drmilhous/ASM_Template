@@ -1,54 +1,50 @@
-# GNU as (AT&T syntax) AVX examples for Linux, macOS (Intel) and Windows x64 (MSYS2/MinGW).
-# They are ASM_Template programs: asm_main + the template's io.asm library + its driver.c.
-# The library is NASM code, so nasm is needed for io.o only; the examples themselves use GNU as.
-#   make                     build all six         make 02_vector_add_avx    build one
-#   ./02_vector_add_avx      run it                make clean
-# The sources are .S files: gcc/clang run the C preprocessor (platform.h), then GNU as.
-# Run 05_cpuid_detect first: examples 02-06 need a CPU with the matching extension.
-PROGS = 01_vector_add_sse 02_vector_add_avx 03_dot_product_fma 04_avx2_integer_sum 05_cpuid_detect 06_avx512_mask
+# GNU as (ARM64, NEON) examples for Linux ARM64, macOS (Apple Silicon) and Windows ARM64.
+# They are ASM_Template programs: asm_main + the template's ARM io library + its driver.c.
+#   make                     build all seven       make 03_dot_product_fmla    build one
+#   ./03_dot_product_fmla    run it                make clean
+# The sources are .S files: the compiler driver runs the C preprocessor (platform.h), then the
+# GNU-syntax assembler (gas on Linux, the built-in clang assembler on macOS and Windows).
+# Windows: run this from an MSYS2 CLANGARM64 shell, or use .\quickBuild.ps1 (see ../README.md).
+# Run 05_feature_detect first: 07_sve_predicate needs an SVE CPU (it checks and says so).
+PROGS = 01_vector_add_neon 02_vector_add_pairs 03_dot_product_fmla 04_integer_sum 05_feature_detect 06_masked_tail 07_sve_predicate
 
 # The template folder (override with: make T=/path/to/ASM_Template, or set ASM_TEMPLATE_HOME)
 T ?= $(if $(ASM_TEMPLATE_HOME),$(ASM_TEMPLATE_HOME),$(abspath ../../..))
 
 UNAME := $(shell uname -s)
 ifeq ($(UNAME),Linux)
-  FMT = elf64
   EXE =
-  LIB = $(T)/64_Bit_Intel
-  DRIVER = driver.c
-  IOFLAGS = -d ELF_TYPE
+  LIB = $(T)/64_Bit_ARM
+  IOSRC = $(LIB)/io.s
+  DRIVER = $(LIB)/driver.c
   LDFLAGS = -z noexecstack
 else ifeq ($(UNAME),Darwin)
-  FMT = macho64
   EXE =
   LIB = $(T)/M1_Mac
-  DRIVER = driver_intel.c
-  IOFLAGS =
+  IOSRC = $(LIB)/io_arm.s
+  DRIVER = $(LIB)/driver_arm.c
   LDFLAGS =
-  # The programs are x86-64, so build them as x86-64 even on an Apple Silicon Mac
-  # (plain cc would link for arm64 there). They then run through Rosetta 2.
-  CC = clang -target x86_64-apple-macos13.0
+  CC = clang -arch arm64
 else
-  CC = gcc
-  FMT = win64            # MSYS2 / MinGW / Git Bash on Windows
-  EXE = .exe
-  LIB = $(T)/64_Bit_Windows
-  DRIVER = driver.c
-  IOFLAGS =
+  EXE = .exe             # MSYS2 CLANGARM64 / Git Bash on Windows ARM64
+  LIB = $(T)/64_Bit_Windows_ARM
+  IOSRC = $(LIB)/io_c_fallback.c
+  DRIVER = $(LIB)/driver.c
   LDFLAGS =
+  CC = clang
 endif
-# For a cross build from Linux:
-#   make FMT=win64 EXE=.exe LIB=$(T)/64_Bit_Windows CC=x86_64-w64-mingw32-gcc IOFLAGS= LDFLAGS=
+# For a cross build from an x86 Linux machine (then run with: qemu-aarch64 -cpu max -L /usr/aarch64-linux-gnu ./prog):
+#   make CC=aarch64-linux-gnu-gcc
 
 .PHONY: all clean
 all: $(PROGS:%=%$(EXE))
 
-io.o: $(LIB)/io.asm
-	nasm -f $(FMT) $(IOFLAGS) $< -o $@
+io.o: $(IOSRC)
+	$(CC) -c $< -o $@
 
 %$(EXE): %.S platform.h io.o
 	$(CC) -g -c $< -o $*.o
-	$(CC) $(LDFLAGS) -o $@ $*.o io.o $(LIB)/$(DRIVER)
+	$(CC) $(LDFLAGS) -o $@ $*.o io.o $(DRIVER)
 
 clean:
 	rm -f $(PROGS) $(PROGS:%=%.exe) *.o

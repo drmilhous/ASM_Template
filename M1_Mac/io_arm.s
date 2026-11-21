@@ -6,6 +6,7 @@
     printInt:       .asciz "%d"
     printNewline:   .asciz "\n"
     printString:    .asciz "%s"
+    printFloat:     .asciz "%f"
     dump_regs_string: .asciz "X0:  0x%016lX X1:  0x%016lX X2:  0x%016lX X3:  0x%016lX X4:  0x%016lX X5:  0x%016lX X6:  0x%016lX X7:  0x%016lX\n"
     dump_regs_string2: .asciz "X8:  0x%016lX X9:  0x%016lX X10: 0x%016lX X11: 0x%016lX X12: 0x%016lX X13: 0x%016lX X14: 0x%016lX X15: 0x%016lX\n"
     dump_regs_string3: .asciz "X16: 0x%016lX X17: 0x%016lX X18: 0x%016lX X19: 0x%016lX X20: 0x%016lX X21: 0x%016lX X22: 0x%016lX X23: 0x%016lX\n"
@@ -15,6 +16,7 @@
 .global _print_int
 .global _print_nl  
 .global _print_string
+.global _print_float
 .global _dump_regs
 
 // External function (printf from libc)
@@ -184,3 +186,22 @@ _dump_regs:
     ldp     x29, x30, [sp], #0x120
   // Restore frame pointer and link register (updated size)
     ret                              // Return
+
+// print_float: prints the double in d0 like printf("%f")
+// Input: d0 = double. Keeps x0, x1 and d0.
+// Apple arm64 passes the arguments of a variadic function (printf) on the stack, not in registers,
+// so the double is stored where sp points when printf is called.
+_print_float:
+    sub     sp, sp, #48
+    stp     x29, x30, [sp, #32]
+    add     x29, sp, #32
+    str     d0, [sp]                // the variadic argument (also keeps d0 for the caller)
+    stp     x0, x1, [sp, #16]
+    adrp    x0, printFloat@PAGE
+    add     x0, x0, printFloat@PAGEOFF
+    bl      _printf
+    ldr     d0, [sp]
+    ldp     x0, x1, [sp, #16]
+    ldp     x29, x30, [sp, #32]
+    add     sp, sp, #48
+    ret

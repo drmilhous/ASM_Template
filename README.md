@@ -33,7 +33,7 @@ The template files use armasm64 syntax (`AREA`, `PROC`, `DCB`), not the GNU synt
 
 The `Syscalls` folder has raw system call programs (write, getpid, open/read/close, mmap, exit) for every platform and CPU above. See `Syscalls/README.md`. The `Libc` folder has the same platforms using the C library (fopen/fwrite/fread, malloc, creating processes, executable memory). `Explorer/index.html` is a searchable web page of all of them with OS and platform dropdowns.
 
-The `Examples/AVX` folder has six SIMD programs (SSE, AVX, FMA, AVX2, CPUID detection, AVX-512) in both NASM and GNU as syntax (using the template's io library), for Linux, macOS (Intel) and Windows x64. See `Examples/AVX/README.md`.
+The `Examples/AVX` folder has SIMD programs for x86-64 (SSE, AVX, FMA, AVX2, AVX-512, in NASM; Linux, macOS Intel, Windows x64) and for ARM64 (NEON and SVE in GNU as syntax; Linux, macOS Apple Silicon, Windows on Arm), all using the template's io library. See `Examples/AVX/README.md`.
 
 ## Setup: choose install and project folders
 
