@@ -1,34 +1,31 @@
-/* platform.h: small portability layer so the same GNU as source assembles for
- *   Linux (System V ABI), macOS Intel (System V ABI, C symbols get a leading
- *   underscore) and Windows x64 (Microsoft x64 ABI, MinGW or clang).
- * The files are named .S (capital S): gcc and clang run the C preprocessor over
- * them first, then hand the result to GNU as. Comments therefore use C style.
- * Only the ABI details these examples touch are covered:
- *   - which registers carry the first printf arguments
- *   - the 32-byte shadow space the Windows ABI wants below every call
- *   - how a double is passed to a variadic function such as printf
- *   - symbol names and the ELF-only .note.GNU-stack section
+/* platform.h: glue between these examples and the ASM_Template I/O library (io.asm).
+ * Each example is the usual template program: it defines asm_main, and driver.c's main() calls it.
+ * The library (written in NASM, built to io.o) supplies print_int, print_string and print_nl, so a
+ * GNU as program can link against it like any other object file.
+ *
+ * The library for each platform is built from the template folder:
+ *   Linux    64_Bit_Intel/io.asm      value or pointer to print is passed in RAX
+ *   macOS    M1_Mac/io.asm            value or pointer to print is passed in RDI
+ *   Windows  64_Bit_Windows/io.asm    value or pointer to print is passed in RAX
+ * The macros below hide that difference (and the underscore macOS puts in front of C names).
+ *
+ * The files are named .S (capital S): gcc and clang run the C preprocessor over them first, then
+ * hand the result to GNU as, so comments use C style.
+ *
+ * Floats are printed with print_float, which takes a double in xmm0 (like printf "%f"); the
+ * examples widen a single-precision float with cvtss2sd first.
+ *
+ * Library calls clobber the caller-saved registers (printf runs inside them), so loop counters
+ * that live across a print are kept in callee-saved registers (rbx, r12, r13 ...).
  */
-#if defined(_WIN32)
-#define WINDOWS 1
-#define MAIN main
-#define PRINTF printf
-#define ARG1  %rcx
-#define ARG2  %rdx
-#define ARG2D %edx
-#elif defined(__APPLE__)
-#define MACOS 1
-#define MAIN _main
-#define PRINTF _printf
-#define ARG1  %rdi
-#define ARG2  %rsi
-#define ARG2D %esi
+#if defined(__APPLE__)
+#define ASM_MAIN _asm_main
+#define LIBARG   %rdi
+#define LIBARG32 %edi
 #else
-#define MAIN main
-#define PRINTF printf@PLT      /* through the PLT: works with PIE executables */
-#define ARG1  %rdi
-#define ARG2  %rsi
-#define ARG2D %esi
+#define ASM_MAIN asm_main
+#define LIBARG   %rax
+#define LIBARG32 %eax
 #endif
 
 #ifdef __ELF__
@@ -37,31 +34,26 @@
 #define GNU_STACK_NOTE
 #endif
 
-/* CCALL fn: call a C function with the stack set up for the platform.
- * Windows needs 32 bytes of shadow space; adding 32 keeps the 16-byte alignment. */
-#ifdef WINDOWS
-.macro CCALL fn
-    sub $32, %rsp
-    call \fn
-    add $32, %rsp
+/* PRINT_INT x   : print the 32-bit value x (register or $number) in decimal
+ * PRINT_STR sym : print the zero-terminated string at label sym
+ * PRINT_PTR reg : print the zero-terminated string whose address is in reg
+ * PRINT_FLOAT   : print the double in xmm0 (the library keeps xmm0 intact)
+ * PRINT_NL      : print a newline */
+.macro PRINT_INT src
+    mov \src, LIBARG32
+    call print_int
 .endm
-/* DOUBLE_ARG2 / DOUBLE_ARG3: the double in xmm0 becomes the 2nd / 3rd argument of printf.
- * System V: it simply stays in xmm0 (and eax = number of vector registers used).
- * Windows: a variadic double travels in BOTH the xmm register and the matching integer register. */
-.macro DOUBLE_ARG2
-    movapd %xmm0, %xmm1
-    movq %xmm0, %rdx
+.macro PRINT_STR sym
+    lea \sym(%rip), LIBARG
+    call print_string
 .endm
-.macro DOUBLE_ARG3
-    movapd %xmm0, %xmm2
-    movq %xmm0, %r8
+.macro PRINT_PTR reg
+    mov \reg, LIBARG
+    call print_string
 .endm
-#else
-.macro CCALL fn
-    call \fn
+.macro PRINT_FLOAT
+    call print_float
 .endm
-.macro DOUBLE_ARG2
+.macro PRINT_NL
+    call print_nl
 .endm
-.macro DOUBLE_ARG3
-.endm
-#endif
