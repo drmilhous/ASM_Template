@@ -74,7 +74,7 @@ The old `64_Bit_Windows/io.asm` was a copy of the Linux one (it passed arguments
 ## Which machines can run these
 
 - **Intel or AMD PC with AVX** (almost anything since 2013; AVX2/FMA since about 2015; AVX-512 only on some CPUs): all three OSes.
-- **Windows on Arm and Apple Silicon Macs**: these programs build for x86-64, and the emulators on those machines do not run AVX. Use an x64 PC, a cloud Linux VM, or the ARM64 NEON examples.
+- **Windows on Arm and Apple Silicon Macs**: these programs build for x86-64 (on a Mac the Makefiles pass `-target x86_64-apple-macos13.0` so `make` produces an Intel binary), and they run only as far as the emulator supports the instructions. Windows-on-Arm emulation has no AVX. Rosetta 2 on macOS may run SSE and some AVX/AVX2, but not AVX-512: run `05_cpuid_detect` first. Use an x64 PC, a cloud Linux VM, or the ARM64 NEON examples.
 - On macOS the build targets Intel Macs.
 
 ## Testing status
