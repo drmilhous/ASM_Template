@@ -14,7 +14,7 @@ section .data align=64
     a   times 32 dd 1.5             ; padding beyond COUNT is never read thanks to the mask
     b   times 32 dd 2.5
     s_sum db "sum of c[0..20] = ", 0
-    s_exp db " (expected 84)", 0
+    s_exp db " (expected 84.0)", 0
 
 section .bss align=64
     c   resd 32
@@ -23,8 +23,8 @@ section .text
 ASM_MAIN:
     push rbp
     mov rbp, rsp
-    push rbx                        ; callee-saved: survives the library calls
-    sub rsp, 8                      ; keeps the stack 16-byte aligned
+    push rbx
+    sub rsp, 8                      ; spare 8-byte slot for the result (also keeps the stack aligned)
 
     lea r8,  [a]
     lea r9,  [b]
@@ -60,10 +60,12 @@ ASM_MAIN:
     inc ecx
     cmp ecx, COUNT
     jb .sum
-    cvttss2si ebx, xmm0
+    cvtss2sd xmm0, xmm0             ; float -> double for print_float
+    movsd [rsp], xmm0               ; keep it in the spare stack slot across print_string
 
     PRINT_STR s_sum
-    PRINT_INT ebx
+    movsd xmm0, [rsp]
+    PRINT_FLOAT
     PRINT_STR s_exp
     PRINT_NL
 

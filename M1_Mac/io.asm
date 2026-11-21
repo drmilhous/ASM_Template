@@ -3,6 +3,7 @@ segment .data
 printInt: db "%d",0
 printNewline: db 10,0
 printString: db "%s",0
+printFloat: db "%f",0
 dump_regs_string: db  "RAX: 0x%016lX RBX: 0x%016lX RCX: 0x%016lX RDX: 0x%016lX RSP: 0x%016lX RBP: 0x%016lX RSI: 0x%016lX RDI: 0x%016lX",10, 
 dump_regs_string2: db "R8:  0x%016lX R9:  0x%016lX R10: 0x%016lX R11: 0x%016lX R12: 0x%016lX R13: 0x%016lX R14: 0x%016lX R15: 0x%016lX",10,0
 
@@ -13,6 +14,7 @@ segment .text
 global print_int 
 global print_nl
 global print_string
+global print_float
 global dump_regs
 
 print_int:
@@ -70,6 +72,39 @@ print_string:
         pop     rbp       ;epilog
         ret               ;return from function 
         ; (pop return address from stack)
+
+print_float:
+        ; prints the double in xmm0 with printf "%f"; keeps all registers
+        push    rbp
+        mov     rbp, rsp
+        push    rax
+        push    rcx
+        push    rdx
+        push    rsi
+        push    rdi
+        push    r8
+        push    r9
+        push    r10
+        push    r11             ; nine registers = 72 bytes below rbp
+        sub     rsp, 16
+        movups  [rsp], xmm0     ; keep xmm0 for the caller (printf changes it)
+        and     rsp, -16        ; 16-byte alignment, whatever the caller did
+        lea     rdi, [rel printFloat]
+        mov     eax, 1          ; one vector register argument
+        call    _printf
+        movups  xmm0, [rbp - 88]
+        lea     rsp, [rbp - 72]
+        pop     r11
+        pop     r10
+        pop     r9
+        pop     r8
+        pop     rdi
+        pop     rsi
+        pop     rdx
+        pop     rcx
+        pop     rax
+        pop     rbp
+        ret
 
 dump_regs:
         ; setup routine

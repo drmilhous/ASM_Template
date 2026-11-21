@@ -39,8 +39,8 @@ ASM_MAIN:
     PRINT_STR s_open
     PRINT_INT ebx
     PRINT_STR s_close
-    cvttss2si eax, [r12 + rbx*4]    ; float -> whole number for print_int
-    PRINT_INT eax
+    cvtss2sd xmm0, [r12 + rbx*4]    ; float -> double for print_float
+    PRINT_FLOAT
     PRINT_NL
     inc ebx
     cmp ebx, 8

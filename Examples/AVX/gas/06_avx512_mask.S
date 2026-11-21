@@ -19,7 +19,7 @@ b:  .rept 32
     .float 2.5
     .endr
 s_sum: .asciz "sum of c[0..20] = "
-s_exp: .asciz " (expected 84)"
+s_exp: .asciz " (expected 84.0)"
 
     .bss
     .balign 64
@@ -29,8 +29,8 @@ c:  .skip 128
 ASM_MAIN:
     push %rbp
     mov %rsp, %rbp
-    push %rbx                           // callee-saved: survives the library calls
-    sub $8, %rsp                        // keeps the stack 16-byte aligned
+    push %rbx
+    sub $8, %rsp                        // spare 8-byte slot for the result (also keeps the stack aligned)
 
     lea a(%rip), %r8
     lea b(%rip), %r9
@@ -66,10 +66,12 @@ ASM_MAIN:
     inc %ecx
     cmp $COUNT, %ecx
     jb .Lsum
-    cvttss2si %xmm0, %ebx
+    cvtss2sd %xmm0, %xmm0               // float -> double for print_float
+    movsd %xmm0, (%rsp)                 // keep it in the spare stack slot across print_string
 
     PRINT_STR s_sum
-    PRINT_INT %ebx
+    movsd (%rsp), %xmm0
+    PRINT_FLOAT
     PRINT_STR s_exp
     PRINT_NL
 

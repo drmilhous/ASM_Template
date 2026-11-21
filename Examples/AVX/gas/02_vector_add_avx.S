@@ -43,8 +43,8 @@ ASM_MAIN:
     PRINT_STR s_open
     PRINT_INT %ebx
     PRINT_STR s_close
-    cvttss2si (%r12,%rbx,4), %eax
-    PRINT_INT %eax
+    cvtss2sd (%r12,%rbx,4), %xmm0   // float -> double for print_float
+    PRINT_FLOAT
     PRINT_NL
     inc %ebx
     cmp $16, %ebx

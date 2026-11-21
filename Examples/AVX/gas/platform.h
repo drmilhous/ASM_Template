@@ -12,8 +12,8 @@
  * The files are named .S (capital S): gcc and clang run the C preprocessor over them first, then
  * hand the result to GNU as, so comments use C style.
  *
- * The library has no floating point output, so the examples convert a float to a whole number
- * with cvttss2si and print that. All the example data is chosen so the results are whole numbers.
+ * Floats are printed with print_float, which takes a double in xmm0 (like printf "%f"); the
+ * examples widen a single-precision float with cvtss2sd first.
  *
  * Library calls clobber the caller-saved registers (printf runs inside them), so loop counters
  * that live across a print are kept in callee-saved registers (rbx, r12, r13 ...).
@@ -37,6 +37,7 @@
 /* PRINT_INT x   : print the 32-bit value x (register or $number) in decimal
  * PRINT_STR sym : print the zero-terminated string at label sym
  * PRINT_PTR reg : print the zero-terminated string whose address is in reg
+ * PRINT_FLOAT   : print the double in xmm0 (the library keeps xmm0 intact)
  * PRINT_NL      : print a newline */
 .macro PRINT_INT src
     mov \src, LIBARG32
@@ -49,6 +50,9 @@
 .macro PRINT_PTR reg
     mov \reg, LIBARG
     call print_string
+.endm
+.macro PRINT_FLOAT
+    call print_float
 .endm
 .macro PRINT_NL
     call print_nl

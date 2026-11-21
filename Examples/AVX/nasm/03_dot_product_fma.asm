@@ -12,14 +12,14 @@ section .data align=64
     x   dd 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0
     y   dd 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0
     s_dot  db "dot = ", 0
-    s_exp  db " (expected 108)", 0
+    s_exp  db " (expected 108.0)", 0
 
 section .text
 ASM_MAIN:
     push rbp
     mov rbp, rsp
-    push rbx                        ; callee-saved: survives the library calls
-    sub rsp, 8                      ; keeps the stack 16-byte aligned
+    push rbx
+    sub rsp, 8                      ; spare 8-byte slot for the result (also keeps the stack aligned)
 
     lea r8, [x]
     lea r9, [y]
@@ -37,11 +37,13 @@ ASM_MAIN:
     vaddps  xmm0, xmm2, xmm1        ; 8 -> 4 partial sums
     vhaddps xmm0, xmm0, xmm0        ; 4 -> 2
     vhaddps xmm0, xmm0, xmm0        ; 2 -> 1
-    vcvttss2si ebx, xmm0            ; whole number for print_int
+    vcvtss2sd xmm0, xmm0, xmm0      ; float -> double for print_float
+    vmovsd [rsp], xmm0              ; keep it in the spare stack slot across print_string
     vzeroupper
 
     PRINT_STR s_dot
-    PRINT_INT ebx
+    vmovsd xmm0, [rsp]
+    PRINT_FLOAT
     PRINT_STR s_exp
     PRINT_NL
 

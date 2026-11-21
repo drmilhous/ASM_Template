@@ -31,7 +31,7 @@ The programs are laid out the same way in both folders, so reading one next to t
 
 Each example is the usual template program: it defines `asm_main`, and the template's `driver.c` `main()` calls it. Output goes through the template's I/O library (`io.asm`/`io.inc`): `print_int`, `print_string` and `print_nl`. There is no `printf` in the examples. The library is picked from the template folder for your OS (`64_Bit_Intel`, `M1_Mac` or `64_Bit_Windows`) and built to `io.o`; the `gas/` examples link against that NASM-built object like any other, which is also a small demonstration of mixing the two assemblers.
 
-The library has no floating point output, so the examples convert floats to whole numbers with `cvttss2si` before `print_int` (the data is chosen so the results are whole). Library calls can clobber the caller-saved registers, so loop counters that live across a print are kept in `rbx`/`r12`/`r13`.
+Floats are printed with the library's `print_float`: it takes a **double in `xmm0`** and prints it like `printf("%f")`, so the examples widen a single-precision result with `cvtss2sd` first. `print_float` keeps all registers and `xmm0`; the other print routines may clobber `xmm0` (printf runs inside them), so a float result that must survive a `print_string` is parked in a stack slot. Library calls also clobber the caller-saved registers, so loop counters that live across a print are kept in `rbx`/`r12`/`r13`.
 
 The folders find the template by looking three levels up (`Examples/AVX/nasm` -> `ASM_Template`); set `ASM_TEMPLATE_HOME` or pass `T=/path/to/ASM_Template` to `make` if you moved them.
 
@@ -68,7 +68,8 @@ The vector code is identical on every OS. Only the way a value or string reaches
 The macros are `PRINT_INT`, `PRINT_STR`, `PRINT_PTR`, `PRINT_NL` (see `platform.inc` / `platform.h`).
 Two more portable details: array base addresses are loaded with `lea` first (RIP-relative addressing cannot also take an index register, and macOS and Windows require it), and data sections carry `align=64` so the aligned loads (`vmovaps`) are safe.
 
-**Windows library:** the old `64_Bit_Windows/io.asm` was a copy of the Linux one (it passed arguments in `rdi`/`rsi` and called `printf wrt ..plt`, which does not assemble for `win64`). It is replaced by a real Windows x64 version with the same `print_int`/`print_hex`/`print_nl`/`print_string` calls, a value or pointer in `rax`, and all registers preserved. It handles the Microsoft x64 rules itself (32 bytes of shadow space, 16-byte stack alignment). The old `dump_registers` is gone because it never worked on Windows.
+**Library changes in this folder's PR:** `print_float` (double in `xmm0`) was added to all three libraries (`64_Bit_Intel`, `M1_Mac`, `64_Bit_Windows`).
+The old `64_Bit_Windows/io.asm` was a copy of the Linux one (it passed arguments in `rdi`/`rsi` and called `printf wrt ..plt`, which does not assemble for `win64`). It is replaced by a real Windows x64 version with `print_int`/`print_hex`/`print_nl`/`print_string`/`print_float` (value or pointer in `rax`, double in `xmm0`), a working `dump_registers`, and all registers preserved. It handles the Microsoft x64 rules itself: 32 bytes of shadow space, 16-byte stack alignment, a double passed to `printf` in both an xmm and an integer register, and `%llX` for 64-bit hex (`%lX` is only 32 bits on Windows).
 
 ## Which machines can run these
 

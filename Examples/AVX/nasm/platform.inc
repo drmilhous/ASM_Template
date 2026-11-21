@@ -8,8 +8,8 @@
 ;   Windows  64_Bit_Windows/io.asm    (win64)    value or pointer to print is passed in RAX
 ; The macros below hide that difference (and the underscore macOS puts in front of C names).
 ;
-; The library has no floating point output, so the examples convert a float to a whole number
-; with cvttss2si and print that. All the example data is chosen so the results are whole numbers.
+; Floats are printed with print_float, which takes a double in xmm0 (like printf "%f"); the
+; examples widen a single-precision float with cvtss2sd first.
 ;
 ; Library calls clobber the caller-saved registers (printf runs inside them), so loop counters
 ; that live across a print are kept in callee-saved registers (rbx, r12, r13 ...).
@@ -29,6 +29,7 @@
 ; PRINT_INT x   : print the 32-bit value x (register or number) in decimal
 ; PRINT_STR lbl : print the zero-terminated string at label lbl
 ; PRINT_PTR reg : print the zero-terminated string whose address is in reg
+; PRINT_FLOAT   : print the double in xmm0 (the library keeps xmm0 intact)
 ; PRINT_NL      : print a newline
 %macro PRINT_INT 1
     mov LIBARG32, %1
@@ -41,6 +42,9 @@
 %macro PRINT_PTR 1
     mov LIBARG, %1
     call print_string
+%endmacro
+%macro PRINT_FLOAT 0
+    call print_float
 %endmacro
 %macro PRINT_NL 0
     call print_nl

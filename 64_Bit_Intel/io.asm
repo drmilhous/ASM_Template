@@ -5,6 +5,7 @@ printInt: db "%d",0
 printHex: db "%016X",0
 printNewline: db 10,0
 printString: db "%s",0
+printFloat: db "%f",0
 hex_format: db "%*X", 0 
 space: db " ", 0
 stack_format: db "0x%016lX: 0x%016lX",10,0
@@ -37,6 +38,7 @@ global print_hex
 global print_nl
 global read_int
 global print_string
+global print_float
 global dump_registers
 global print64Hex
 global printBits
@@ -163,6 +165,39 @@ print_string:
 	pop rsi
 	pop rax
 	ret
+
+print_float:                    ; prints the double in xmm0 with printf "%f"; keeps all registers
+        push rbp
+        mov rbp, rsp
+        push rax
+        push rcx
+        push rdx
+        push rsi
+        push rdi
+        push r8
+        push r9
+        push r10
+        push r11                ; nine registers = 72 bytes below rbp
+        sub rsp, 16
+        movups [rsp], xmm0      ; keep xmm0 for the caller (printf changes it)
+        and rsp, -16            ; 16-byte alignment, whatever the caller did
+        lea rdi, [printFloat]
+        mov eax, 1              ; one vector register argument
+        call printf WRT ..plt
+        movups xmm0, [rbp - 88]
+        lea rsp, [rbp - 72]
+        pop r11
+        pop r10
+        pop r9
+        pop r8
+        pop rdi
+        pop rsi
+        pop rdx
+        pop rcx
+        pop rax
+        pop rbp
+        ret
+
 
 printBits:
         push rbp ; prolouge
