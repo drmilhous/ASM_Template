@@ -6,6 +6,7 @@
     printInt:       .asciz "%d"
     printNewline:   .asciz "\n"
     printString:    .asciz "%s"
+    printFloat:     .asciz "%f"
     dump_regs_string: .asciz "X0:  0x%016lX X1:  0x%016lX X2:  0x%016lX X3:  0x%016lX X4:  0x%016lX X5:  0x%016lX X6:  0x%016lX X7:  0x%016lX\n"
     dump_regs_string2: .asciz "X8:  0x%016lX X9:  0x%016lX X10: 0x%016lX X11: 0x%016lX X12: 0x%016lX X13: 0x%016lX X14: 0x%016lX X15: 0x%016lX\n"
     dump_regs_string3: .asciz "X16: 0x%016lX X17: 0x%016lX X18: 0x%016lX X19: 0x%016lX X20: 0x%016lX X21: 0x%016lX X22: 0x%016lX X23: 0x%016lX\n"
@@ -15,6 +16,7 @@
 .global print_int
 .global print_nl  
 .global print_string
+.global print_float
 .global dump_regs
 
 // External function (printf from libc)
@@ -22,7 +24,7 @@
 
 // print_int: prints an integer value
 // Input: x0 = integer to print
-_print_int:
+print_int:
     // Function prologue
     stp     x29, x30, [sp, #-32]!   // Save frame pointer and link register
     mov     x29, sp                  // Set up frame pointer
@@ -31,7 +33,7 @@ _print_int:
     // Prepare arguments for printf
     mov     x1, x0                  // Move integer to second argument (x1)
     adrp    x0, printInt      // Load address of format string
-    add     x0, x0, printInt
+    add     x0, x0, :lo12:printInt
     
     // Call printf
     bl      printf
@@ -50,7 +52,7 @@ print_nl:
     
     // Prepare arguments for printf
     adrp    x0, printNewline   // Load address of newline format string
-    add     x0, x0, printNewline
+    add     x0, x0, :lo12:printNewline
     
     // Call printf
     bl      printf
@@ -70,7 +72,7 @@ print_string:
     // Prepare arguments for printf
     mov     x1, x0                  // Move string pointer to second argument (x1)
     adrp    x0, printString    // Load address of string format string
-    add     x0, x0, printString
+    add     x0, x0, :lo12:printString
     
     // Call printf
     bl      printf
@@ -185,18 +187,17 @@ dump_regs:
   // Restore frame pointer and link register (updated size)
     ret                              // Return
 
-
-print_int:
-        // x0 contains the integer to print
-        stp x29, x30, [sp, #-16]!   // Save frame pointer and link register
-        mov x29, sp                  // Set frame pointer
-        
-        mov x1, x0                  // Move integer to second argument
-        adr x0, format              // Load format string address
-        bl printf                   // Call printf
-        
-        ldp x29, x30, [sp], #16     // Restore frame pointer and link register
-        ret
-
-.section .rodata
-        format: .string "%d\n"
+// print_float: prints the double in d0 like printf("%f")
+// Input: d0 = double. Keeps x0, x1 and d0.
+print_float:
+    stp     x29, x30, [sp, #-48]!
+    mov     x29, sp
+    stp     x0, x1, [sp, #16]
+    str     d0, [sp, #32]           // keep d0 for the caller
+    adrp    x0, printFloat
+    add     x0, x0, :lo12:printFloat
+    bl      printf                  // the double is still in d0 (AAPCS64: variadic doubles use v registers)
+    ldr     d0, [sp, #32]
+    ldp     x0, x1, [sp, #16]
+    ldp     x29, x30, [sp], #48
+    ret
