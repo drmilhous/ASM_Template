@@ -26,7 +26,11 @@ else ifeq ($(UNAME),Darwin)
   NASMFLAGS =
   IOFLAGS =
   LDFLAGS =
+  # The programs are x86-64, so build them as x86-64 even on an Apple Silicon Mac
+  # (plain cc would link for arm64 there). They then run through Rosetta 2.
+  CC = clang -target x86_64-apple-macos13.0
 else
+  CC = gcc
   FMT = win64            # MSYS2 / MinGW / Git Bash on Windows
   EXE = .exe
   LIB = $(T)/64_Bit_Windows
@@ -35,7 +39,6 @@ else
   IOFLAGS =
   LDFLAGS =
 endif
-CC ?= gcc
 # For a cross build from Linux:
 #   make FMT=win64 EXE=.exe LIB=$(T)/64_Bit_Windows CC=x86_64-w64-mingw32-gcc NASMFLAGS= IOFLAGS= LDFLAGS=
 
