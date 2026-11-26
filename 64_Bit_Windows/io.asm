@@ -5,6 +5,15 @@
 ;   print_string  prints the zero-terminated string at [rax]
 ;   print_float   prints the double in xmm0 (printf "%f")
 ;   dump_registers prints all general registers (RAX..R15, RSP, RBP) in hex
+;   read_int      reads one line and returns it as a signed decimal number in eax (sign-extended into rax)
+;   read_float    reads one line and returns it as a double in xmm0
+;   read_string   reads one line into the buffer at [rax]; rdx = buffer size in bytes (including the
+;                 terminating 0). The newline is removed and the string is always zero-terminated.
+;                 Returns rax = number of characters stored, or -1 at end of input (buffer = "").
+;                 Characters that do not fit are thrown away, so the next read starts on a new line.
+; All three read a whole line, so you can mix them freely (no leftover newline problems). Input that
+; is not a number gives 0 (read_int) or 0.0 (read_float). The register that holds the result is the
+; only one that changes (the flags change too); read_float keeps every general register.
 ; Same calling style as the Linux template: the number (or the string address) to print is in RAX
 ; (the double in XMM0). Every routine keeps all the general registers and xmm0 (the flags change),
 ; so you can call them anywhere. Each one follows the
@@ -21,11 +30,22 @@ printNewline: db 10, 0
 printString:  db "%s", 0
 printFloat:   db "%f", 0
 
+readLineSize equ 256
+
 dumpLine1: db "RAX: %016llX RBX: %016llX RCX: %016llX RDX: %016llX R8 : %016llX R9 : %016llX", 10, 0
 dumpLine2: db "R10: %016llX R11: %016llX R12: %016llX R13: %016llX R14: %016llX R15: %016llX", 10, 0
 dumpLine3: db "RSI: %016llX RDI: %016llX RSP: %016llX RBP: %016llX", 10, 0
 
+segment .bss
+readLine:     resb readLineSize   ; line buffer for read_int / read_float
+
 extern printf
+extern fgets
+extern getchar
+extern strlen
+extern strtol
+extern strtod
+extern __acrt_iob_func          ; __acrt_iob_func(0) is stdin in the Universal C Runtime
 
 segment .text
 global print_int
@@ -34,6 +54,9 @@ global print_nl
 global print_string
 global print_float
 global dump_registers
+global read_int
+global read_float
+global read_string
 
 ; Save the registers printf may change and line up the stack. Uses rbp as the frame pointer.
 %macro LIB_ENTER 0
@@ -173,3 +196,93 @@ dump_registers:
         pop  rax
         pop  rbp
         ret
+
+read_int:
+        LIB_ENTER
+        lea  rcx, [readLine]
+        mov  edx, readLineSize
+        call read_line
+        lea  rcx, [readLine]
+        xor  edx, edx           ; no end pointer
+        mov  r8d, 10            ; base 10
+        call strtol             ; long is 32 bits on Windows
+        movsxd rax, eax
+        mov  [rbp - 8], rax     ; becomes the caller's rax in LIB_LEAVE
+        LIB_LEAVE
+
+read_float:
+        LIB_ENTER
+        lea  rcx, [readLine]
+        mov  edx, readLineSize
+        call read_line
+        lea  rcx, [readLine]
+        xor  edx, edx
+        call strtod             ; result in xmm0
+        movsd [rbp - 72], xmm0  ; becomes the caller's xmm0 in LIB_LEAVE
+        LIB_LEAVE
+
+read_string:
+        LIB_ENTER
+        mov  rcx, rax           ; buffer
+        call read_line          ; rdx = size is already in place
+        mov  [rbp - 8], rax
+        LIB_LEAVE
+
+; Internal: an ordinary Microsoft x64 function. rcx = buffer, rdx = size.
+; Returns rax = length (newline removed) or -1 at end of input.
+read_line:
+        push rbx
+        push rsi
+        push rdi
+        sub  rsp, 32            ; shadow space; 3 pushes + return address keep rsp 16-byte aligned
+        mov  rbx, rcx
+        mov  rsi, rdx
+        xor  eax, eax
+        test rsi, rsi
+        jle  .done              ; no room at all: read nothing
+        mov  eax, 0x7FFFFFFF
+        cmp  rsi, rax
+        cmova rsi, rax          ; fgets takes an int size
+        xor  ecx, ecx
+        call __acrt_iob_func    ; rax = stdin
+        mov  r8, rax
+        mov  rcx, rbx
+        mov  edx, esi
+        call fgets
+        test rax, rax
+        jz   .eof
+        mov  rcx, rbx
+        call strlen
+        mov  rdi, rax
+        test rdi, rdi
+        jz   .discard           ; buffer of size 1: nothing fit
+        cmp  byte [rbx + rdi - 1], 10
+        jne  .discard           ; no newline: the line was longer than the buffer
+        dec  rdi
+        mov  byte [rbx + rdi], 0
+        jmp  .strip_cr
+.discard:                       ; throw away the rest of the line
+        call getchar
+        cmp  eax, 10
+        je   .strip_cr
+        cmp  eax, -1
+        jne  .discard
+.strip_cr:                      ; a CRLF file read in binary mode leaves a \r
+        test rdi, rdi
+        jz   .length
+        cmp  byte [rbx + rdi - 1], 13
+        jne  .length
+        dec  rdi
+        mov  byte [rbx + rdi], 0
+.length:
+        mov  rax, rdi
+.done:
+        add  rsp, 32
+        pop  rdi
+        pop  rsi
+        pop  rbx
+        ret
+.eof:
+        mov  byte [rbx], 0
+        mov  rax, -1
+        jmp  .done
