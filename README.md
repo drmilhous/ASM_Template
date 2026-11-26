@@ -100,6 +100,38 @@ project's `.asm-template.json`. Moving the project itself needs no changes.
 Outputs remain in `build/<architecture>/<configuration>/`. The old generators
 continue to work unchanged.
 
+### Windows io library: printing and reading
+
+Both Windows templates' `io.asm` provide these routines (x64 register / ARM64 register):
+
+| Routine | Input | Result |
+| --- | --- | --- |
+| `print_int` | `eax` / `w0` | prints a signed decimal |
+| `print_float` | `xmm0` / `d0` | prints a double (`%f`) |
+| `print_string` | `rax` / `x0` = string address | prints the zero-terminated string |
+| `print_nl` | — | prints a newline |
+| `read_int` | — | `eax` / `w0` (sign-extended into `rax` / `x0`) |
+| `read_float` | — | `xmm0` / `d0` |
+| `read_string` | `rax` / `x0` = buffer, `rdx` / `x1` = buffer size in bytes | `rax` / `x0` = length, or -1 at end of input |
+
+Each `read_*` routine reads one whole line, so they can be mixed without a leftover
+newline being picked up by the next read. `read_string` removes the newline, always
+zero-terminates the buffer, and discards any characters that do not fit. Input that
+is not a number gives 0 / 0.0. On x64 (`%include "io.inc"`), every routine keeps all
+registers except its result register; on ARM64 the routines follow the normal ARM64
+rules (`x19`–`x28` are kept). Example (x64):
+
+```nasm
+segment .bss
+name:   resb 64
+segment .text
+        call read_int           ; eax = number typed
+        call print_int
+        lea  rax, [name]
+        mov  rdx, 64
+        call read_string        ; rax = length
+```
+
 ### Manual use and build details
 
 You can also copy the appropriate entry script **and** `Build-Windows.ps1` into

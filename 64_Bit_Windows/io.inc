@@ -4,3 +4,6 @@ extern print_nl
 extern print_string
 extern print_float
 extern dump_registers
+extern read_int
+extern read_float
+extern read_string
