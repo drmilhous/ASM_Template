@@ -170,7 +170,9 @@ caller, and relative `Source` paths are resolved inside the project.
 
 The `Syscalls` folder has raw system call programs (write, getpid, open/read/close, mmap, exit) for every platform and CPU above. See `Syscalls/README.md`. The `Libc` folder has the same platforms using the C library (fopen/fwrite/fread, malloc, creating processes, executable memory). `Explorer/index.html` is a searchable web page of all of them with OS and platform dropdowns.
 
-The `Examples/AVX` folder has six SIMD programs (SSE, AVX, FMA, AVX2, CPUID detection, AVX-512) in both NASM and GNU as syntax (using the template's io library), for Linux, macOS (Intel) and Windows x64. See `Examples/AVX/README.md`.
+## SIMD: AVX and NEON
+
+Start with [Examples/SIMD](Examples/SIMD/README.md): matching vector-add, dot-product, and integer-sum examples for x86-64 AVX/AVX2 (NASM) and ARM64 NEON (Clang/GNU assembly), with build, debugger, and result-checking instructions for macOS, Windows, and Linux. NASM is an x86 assembler; NEON uses the ARM64 assembler. The original six [x86 extension examples](Examples/AVX/README.md) remain available as supplementary material.
 
 ## Setup: choose install and project folders
 
@@ -185,3 +187,7 @@ The locations are stored in the variables `ASM_TEMPLATE_HOME` and `ASM_PROJECTS`
 
     64bitIntelProject.sh hello             # Linux (or ./bin/64bitIntelProject.sh hello)
     .\bin\WindowsProject.ps1 hello         # Windows
+
+## Instruction patterns for reverse engineering
+
+[Examples/RE_Instructions](Examples/RE_Instructions/README.md) contains six paired NASM/ARM64 examples for width and conditions, bits and endianness, scalar floating point, atomic increments, vector rearrangement, and compiler arithmetic patterns. Each uses `.data` arrays, `asm_main` calling a separate operation, visible inputs/outputs, and independent reference checks. The guide includes Windows/macOS/Linux build and debugging commands plus an O0/O2 compiler-inspection fixture.
