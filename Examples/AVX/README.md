@@ -1,4 +1,6 @@
-# AVX examples (NASM and GNU as; Linux, macOS, Windows)
+# SIMD supplement: x86 SSE, AVX, and AVX-512
+
+For the main **SIMD: AVX and NEON** section, matched examples, automated checks, and cross-platform debugging, start at [Examples/SIMD](../SIMD/README.md). This folder keeps the original x86-only examples and paths.
 
 Six small programs about vector instructions, each written twice so you can compare the two assemblers:
 
